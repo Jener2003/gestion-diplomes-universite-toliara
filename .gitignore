@@ -1,0 +1,24 @@
+# Python
+venv/
+.venv/
+**/venv/
+**/.venv/
+__pycache__/
+*.pyc
+
+# Django
+db.sqlite3
+*.log
+
+# React / Node
+node_modules/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+*.env
+
+# VS Code
+.vscode/
