@@ -17,6 +17,11 @@ class Utilisateur(AbstractUser):
         verbose_name=_('Rôle')
     )
 
+    @property
+    def is_staff_role(self):
+        """True for any administrative circuit role (not a student)."""
+        return self.role != self.Role.ETUDIANT
+
     def __str__(self):
         return f"{self.username} - {self.get_role_display()}"
 

@@ -3,26 +3,16 @@ import AppLayout from '../components/AppLayout';
 import { useAuth } from '../components/AuthContext';
 import StepperProgress from '../components/StepperProgress';
 import { demandesAPI } from '../services/api';
-import { 
-  CheckSquare, 
-  XSquare, 
-  Printer, 
-  Award, 
-  Search, 
-  Filter, 
-  FileText, 
-  UserCheck, 
-  BarChart2, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  Building2, 
-  Eye, 
-  MessageSquare,
-  Sparkles,
-  Send,
-  Users,
-  Download
+import {
+  Printer,
+  Award,
+  Search,
+  FileText,
+  CheckCircle2,
+  Clock,
+  Eye,
+  Download,
+  X
 } from 'lucide-react';
 import StatCards from '../components/StatCards';
 import DashboardCharts from '../components/DashboardCharts';
@@ -42,8 +32,8 @@ const Dashboard = () => {
   
   // Modal state
   const [selectedDemande, setSelectedDemande] = useState(null);
-  const [historiqueDemande, setHistoriqueDemande] = useState([]);
   const [observationInput, setObservationInput] = useState('');
+  const [mentionInput, setMentionInput] = useState('');
   const [submittingAction, setSubmittingAction] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -62,7 +52,7 @@ const Dashboard = () => {
 
       if (user?.role === 'PRESIDENCE') {
         try {
-          const kpiRes = await demandesAPI.get('demandes/kpi_presidence/');
+          const kpiRes = await demandesAPI.getKpiPresidence();
           setPresidenceKpi(kpiRes.data);
         } catch (e) {
           console.error('KPI error', e);
@@ -116,32 +106,23 @@ const Dashboard = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const fetchHistorique = async (demandeId) => {
-    try {
-      const res = await demandesAPI.get(`historique/?demande=${demandeId}`);
-      setHistoriqueDemande(res.data || []);
-    } catch (e) {
-      console.error('Erreur historique', e);
-    }
-  };
-
   const handleOpenModal = (demande) => {
+    // L'historique complet est déjà inclus dans la demande (voir DemandeDiplomeSerializer).
     setSelectedDemande(demande);
-    setHistoriqueDemande([]);
-    fetchHistorique(demande.id);
   };
 
   const handlePasserEtape = async (demandeId, actionType) => {
     setSubmittingAction(true);
     try {
-      await demandesAPI.passerEtape(demandeId, actionType, observationInput);
+      await demandesAPI.passerEtape(demandeId, actionType, observationInput, mentionInput);
       showToast("L'étape du dossier a été mise à jour avec succès !", "success");
       setSelectedDemande(null);
       setObservationInput('');
+      setMentionInput('');
       await fetchDemandesData();
     } catch (error) {
       console.error('Erreur lors du changement d\'étape:', error);
-      showToast("Erreur lors de la mise à jour du dossier.", "error");
+      showToast(error.response?.data?.error || "Erreur lors de la mise à jour du dossier.", "error");
     } finally {
       setSubmittingAction(false);
     }
@@ -154,11 +135,15 @@ const Dashboard = () => {
       case 'SCOLARITE_PREPAREE': return <span className="badge badge-preparee">Préparée Scolarité</span>;
       case 'IMPRIMEE': return <span className="badge badge-imprimee">Imprimée</span>;
       case 'SIGNEE': return <span className="badge badge-verifiee">Signée Présidence</span>;
-      case 'DISPONIBLE': return <span className="badge badge-disponibile">Disponible au Retrait</span>;
+      case 'DISPONIBLE': return <span className="badge badge-disponible">Disponible au Retrait</span>;
       case 'REFUSEE': return <span className="badge badge-refusee">Refusée</span>;
       default: return <span className="badge">{statut}</span>;
     }
   };
+
+  const historiqueDemande = selectedDemande
+    ? [...(selectedDemande.historique || [])].sort((a, b) => new Date(b.date_action) - new Date(a.date_action))
+    : [];
 
   return (
     <AppLayout>
@@ -196,7 +181,7 @@ const Dashboard = () => {
             <h1 style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0a3641', marginTop: '0.2rem', letterSpacing: '-0.02em' }}>
               {user?.role === 'CHEF_SERVICE' && 'Vérification & Validation par le Chef de Service'}
               {user?.role === 'SCOLARITE_CENTRALE' && 'Préparation des Dossiers Académiques'}
-              {user?.role === 'IMPRIMEE' || user?.role === 'IMPRIMEUR' ? 'File d\'Impression des Diplômes' : ''}
+              {user?.role === 'IMPRIMEUR' && 'File d\'Impression des Diplômes'}
               {user?.role === 'PRESIDENCE' && 'Tableau de Bord Stratégique & Signatures'}
             </h1>
           </div>
@@ -332,8 +317,12 @@ const Dashboard = () => {
               Aucun dossier ne correspond à vos critères de recherche.
             </div>
           ) : (
+            <>
+            <p className="scroll-hint-mobile" style={{ display: 'none', fontSize: '0.75rem', color: '#94a3b8', padding: '0.75rem 1.25rem 0' }}>
+              ← Faites glisser le tableau pour voir toutes les colonnes →
+            </p>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     <th style={{ padding: '1.1rem 1.5rem' }}>Dossier</th>
@@ -394,6 +383,7 @@ const Dashboard = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
 
         </div>
@@ -443,7 +433,7 @@ const Dashboard = () => {
                   onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                 >
-                  ✕
+                  <X size={20} />
                 </button>
               </div>
 
@@ -528,6 +518,41 @@ const Dashboard = () => {
                 />
               </div>
 
+              {/* Diplôme déjà réservé (numéro/code assignés dès l'impression) */}
+              {selectedDemande.diplome && (
+                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fff0ee', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <span style={{ fontSize: '0.775rem', fontWeight: 700, color: '#070b19', display: 'block', marginBottom: '0.35rem' }}>
+                    Registre du diplôme
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: '#070b19' }}>
+                    N° {selectedDemande.diplome.numero_diplome} — Code de vérification : {selectedDemande.diplome.code_verification}
+                    {selectedDemande.diplome.mention && ` — Mention : ${selectedDemande.diplome.mention}`}
+                  </span>
+                </div>
+              )}
+
+              {/* Mention (Présidence, à la signature) */}
+              {user?.role === 'PRESIDENCE' && selectedDemande.statut === 'IMPRIMEE' && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#070b19', marginBottom: '0.5rem' }}>
+                    Mention (optionnel) :
+                  </label>
+                  <select
+                    className="input-field"
+                    value={mentionInput}
+                    onChange={(e) => setMentionInput(e.target.value)}
+                    style={{ width: '100%', padding: '0.65rem', fontSize: '0.875rem', borderRadius: '8px', border: '1.5px solid #cbd5e1' }}
+                  >
+                    <option value="">Aucune</option>
+                    <option value="Passable">Passable</option>
+                    <option value="Assez Bien">Assez Bien</option>
+                    <option value="Bien">Bien</option>
+                    <option value="Très Bien">Très Bien</option>
+                    <option value="Excellent">Excellent</option>
+                  </select>
+                </div>
+              )}
+
               {/* Role Specific Action Buttons */}
               <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', flexWrap: 'wrap' }}>
                 
@@ -555,7 +580,7 @@ const Dashboard = () => {
                 )}
 
                 {/* SCOLARITE ACTIONS */}
-                {user?.role === 'SCOLARITE_CENTRALE' && (selectedDemande.statut === 'VERIFIEE_CHEF' || selectedDemande.statut === 'RECUE') && (
+                {user?.role === 'SCOLARITE_CENTRALE' && selectedDemande.statut === 'VERIFIEE_CHEF' && (
                   <button
                     type="button"
                     onClick={() => handlePasserEtape(selectedDemande.id, 'PREPARER_SCOLARITE')}
@@ -568,7 +593,7 @@ const Dashboard = () => {
                 )}
 
                 {/* IMPRIMEUR ACTIONS */}
-                {(user?.role === 'IMPRIMEUR' || user?.role === 'IMPRIMEE') && (
+                {user?.role === 'IMPRIMEUR' && selectedDemande.statut === 'SCOLARITE_PREPAREE' && (
                   <button
                     type="button"
                     onClick={() => handlePasserEtape(selectedDemande.id, 'IMPRIMER')}

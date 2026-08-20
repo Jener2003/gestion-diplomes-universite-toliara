@@ -1,17 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Université de Tuléar Brand Colors */
-  --primary-petrol: #0a3641;
-  --primary-petrol-dark: #051e24;
-  --primary-petrol-light: #164f5e;
-  --primary-petrol-subtle: #f0f6f8;
-  
-  --secondary-blue: #1d70b8;
-  --secondary-blue-hover: #155793;
-  --secondary-blue-light: #e6f0f9;
-  --accent-cyan: #00b4d8;
-  --accent-cyan-light: #e6f7fa;
+  /* Université de Toliara Brand Colors */
+  --color-primary: #c0000c;
+  --color-primary-dark: #930007;
+  --color-primary-subtle: #fde8e8;
+
+  --color-ink: #070b19;
+  --color-ink-dark: #04060f;
+  --color-ink-light: #1a2332;
+
+  --color-teal: #048b9a;
+  --color-cream: #fff0ee;
 
   --status-pending: #f59e0b;
   --status-verified: #3b82f6;
@@ -28,18 +28,21 @@
   --bg-main: #f8fafc;
   --bg-card: #ffffff;
   --border-color: #e2e8f0;
-  
-  --shadow-sm: 0 2px 8px -2px rgba(10, 54, 65, 0.05);
-  --shadow-md: 0 10px 20px -8px rgba(10, 54, 65, 0.08), 0 4px 6px -4px rgba(10, 54, 65, 0.04);
-  --shadow-lg: 0 20px 25px -5px rgba(10, 54, 65, 0.1), 0 10px 10px -5px rgba(10, 54, 65, 0.04);
-  --shadow-xl: 0 25px 50px -12px rgba(10, 54, 65, 0.25);
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-full: 9999px;
 
-  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family: 'Manrope', system-ui, -apple-system, sans-serif;
   --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -72,23 +75,46 @@ button {
 }
 
 /* Animations */
+
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 15px rgba(29, 112, 184, 0.15); }
-  50% { box-shadow: 0 0 25px rgba(29, 112, 184, 0.35); }
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(192, 0, 12, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(192, 0, 12, 0.4);
+  }
 }
 
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-fade-in {
@@ -96,6 +122,7 @@ button {
 }
 
 /* Custom Scrollbar */
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -117,6 +144,7 @@ button {
 }
 
 /* Base Card Style */
+
 .card {
   background: var(--bg-card);
   border: 1px solid rgba(226, 232, 240, 0.8);
@@ -132,6 +160,7 @@ button {
 }
 
 /* Glassmorphism utility */
+
 .glass-panel {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(12px);
@@ -140,6 +169,7 @@ button {
 }
 
 /* Buttons */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -157,27 +187,27 @@ button {
 }
 
 .btn-primary {
-  background-color: var(--primary-petrol);
+  background-color: var(--color-primary);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(10, 54, 65, 0.15);
+  box-shadow: 0 4px 12px rgba(192, 0, 12, 0.15);
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-petrol-light);
-  box-shadow: 0 6px 16px rgba(10, 54, 65, 0.25);
-  transform: translateY(-1.5px);
+  background-color: var(--color-primary-dark);
+  box-shadow: 0 6px 16px rgba(192, 0, 12, 0.25);
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
-  background-color: var(--secondary-blue);
+  background-color: var(--color-ink);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(29, 112, 184, 0.15);
+  box-shadow: 0 4px 12px rgba(7, 11, 25, 0.15);
 }
 
 .btn-secondary:hover {
-  background-color: var(--secondary-blue-hover);
-  box-shadow: 0 6px 16px rgba(29, 112, 184, 0.25);
-  transform: translateY(-1.5px);
+  background-color: var(--color-ink-light);
+  box-shadow: 0 6px 16px rgba(7, 11, 25, 0.25);
+  transform: translateY(-1px);
 }
 
 .btn-outline {
@@ -206,6 +236,7 @@ button {
 }
 
 /* Status Badges */
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -219,30 +250,113 @@ button {
   transition: var(--transition-smooth);
 }
 
-.badge-recue { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-.badge-verifiee { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-.badge-preparee { background: #ede9fe; color: #5b21b6; border: 1px solid #ddd6fe; }
-.badge-imprimee { background: #cffafe; color: #155e75; border: 1px solid #a5f3fc; }
-.badge-disponible { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-.badge-refusee { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.badge-recue {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
 
-/* Table hover & styling utilities */
+.badge-verifiee {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.badge-preparee {
+  background: #ede9fe;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+}
+
+.badge-imprimee {
+  background: #cffafe;
+  color: #155e75;
+  border: 1px solid #a5f3fc;
+}
+
+.badge-disponible {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-refusee {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Table hover */
+
 .table-row-hover:hover {
-  background-color: var(--primary-petrol-subtle);
+  background-color: var(--color-primary-subtle);
   transform: scale(1.002);
 }
 
-/* Inputs, Textareas, Selects focus animations */
-input:focus, select:focus, textarea:focus {
-  border-color: var(--secondary-blue) !important;
-  box-shadow: 0 0 0 3px rgba(29, 112, 184, 0.15) !important;
+/* Inputs, Textareas, Selects */
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(192, 0, 12, 0.15) !important;
   outline: none;
 }
 
 /* Responsive Utility Container */
+
 .container {
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 1.5rem;
+}
+
+/* Form fields */
+
+.input-group {
+  margin-bottom: 1.25rem;
+}
+
+.input-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid #cbd5e1;
+  outline: none;
+  background: #ffffff;
+  font-family: inherit;
+}
+
+.input-field:focus {
+  border-color: var(--color-primary);
+}
+
+/* Responsive */
+
+@media (max-width: 640px) {
+  .header-brand .toliara-logo-subtitle {
+    display: none !important;
+  }
+
+  .header-brand-compact .toliara-logo-text {
+    display: none !important;
+  }
+
+  .header-hide-mobile {
+    display: none !important;
+  }
+
+  .scroll-hint-mobile {
+    display: block !important;
+  }
 }

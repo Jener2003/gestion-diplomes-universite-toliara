@@ -5,6 +5,7 @@ class UtilisateurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Utilisateur
         fields = ('id', 'username', 'email', 'first_name', 'last_name', 'role')
+        read_only_fields = ('role',)
 
 class EtudiantSerializer(serializers.ModelSerializer):
     utilisateur = UtilisateurSerializer(read_only=True)

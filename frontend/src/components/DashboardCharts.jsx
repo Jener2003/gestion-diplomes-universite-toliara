@@ -25,7 +25,7 @@ const DashboardCharts = ({ stats }) => {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
       
       <div className="card" style={{ padding: '1.5rem' }}>
-        <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#0a3641', marginBottom: '1.5rem' }}>
+        <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#070b19', marginBottom: '1.5rem' }}>
           Répartition par Faculté
         </h4>
         <div style={{ height: 300 }}>
@@ -37,14 +37,14 @@ const DashboardCharts = ({ stats }) => {
               <Tooltip 
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               />
-              <Bar dataKey="Dossiers" fill="#1d70b8" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Dossiers" fill="#c0000c" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="card" style={{ padding: '1.5rem' }}>
-        <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#0a3641', marginBottom: '1.5rem' }}>
+        <h4 style={{ fontSize: '1rem', fontWeight: 700, color: '#070b19', marginBottom: '1.5rem' }}>
           Statuts des Dossiers
         </h4>
         <div style={{ height: 300 }}>

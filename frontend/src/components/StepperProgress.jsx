@@ -49,7 +49,7 @@ const StepperProgress = ({ currentStatut }) => {
           left: '20px', 
           width: `${(currentIndex / (STAGES.length - 1)) * 92}%`, 
           height: '3px', 
-          background: '#0a3641', 
+          background: '#070b19', 
           transition: 'width 0.4s ease',
           zIndex: 0 
         }} />
@@ -68,10 +68,10 @@ const StepperProgress = ({ currentStatut }) => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: isPassed ? '#10b981' : isCurrent ? '#0a3641' : '#ffffff',
+                background: isPassed ? '#10b981' : isCurrent ? '#070b19' : '#ffffff',
                 color: isPassed || isCurrent ? '#ffffff' : '#94a3b8',
-                border: isCurrent ? '3px solid #00b4d8' : isPassed ? 'none' : '2px solid #cbd5e1',
-                boxShadow: isCurrent ? '0 0 0 4px rgba(10, 54, 65, 0.15)' : 'none',
+                border: isCurrent ? '3px solid #048b9a' : isPassed ? 'none' : '2px solid #cbd5e1',
+                boxShadow: isCurrent ? '0 0 0 4px rgba(7, 11, 25, 0.15)' : 'none',
                 transition: 'all 0.3s ease'
               }}>
                 {isPassed ? <Check size={18} strokeWidth={3} /> : <Icon size={16} />}
@@ -79,7 +79,7 @@ const StepperProgress = ({ currentStatut }) => {
               <span style={{ 
                 fontSize: '0.725rem', 
                 fontWeight: isCurrent ? 700 : 500, 
-                color: isCurrent ? '#0a3641' : isPassed ? '#10b981' : '#64748b',
+                color: isCurrent ? '#070b19' : isPassed ? '#10b981' : '#64748b',
                 marginTop: '0.375rem',
                 textAlign: 'center'
               }}>
