@@ -10,7 +10,7 @@ const NotFound = () => {
         <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: '#e2e8f0', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem' }}>
           <FileQuestion size={40} />
         </div>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#0a3641', marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#070b19', marginBottom: '1rem' }}>
           404 - Page Introuvable
         </h1>
         <p style={{ fontSize: '1rem', color: '#64748b', maxWidth: '400px', marginBottom: '2rem' }}>

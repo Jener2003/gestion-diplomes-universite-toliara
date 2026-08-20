@@ -12,15 +12,17 @@ export const AuthProvider = ({ children }) => {
     if (!token) {
       setUser(null);
       setLoading(false);
-      return;
+      return null;
     }
     try {
       const response = await authAPI.getMe();
       setUser(response.data);
+      return response.data;
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
       localStorage.clear();
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -36,8 +38,8 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login(username, password);
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
-      await fetchCurrentUser();
-      return { success: true };
+      const loggedInUser = await fetchCurrentUser();
+      return { success: true, user: loggedInUser };
     } catch (error) {
       setLoading(false);
       return {

@@ -7,14 +7,15 @@ django.setup()
 
 from utilisateurs.models import Utilisateur, Etudiant
 from demandes.models import DemandeDiplome, Historique
+from diplomes.models import Diplome
 
 def populate():
-    print("--- Population des utilisateurs et données de test (Université de Tuléar) ---")
+    print("--- Population des utilisateurs et données de test (Université de Toliara) ---")
 
     # 1. Chef de Service
     u_chef, _ = Utilisateur.objects.get_or_create(
         username='chef1',
-        defaults={'email': 'chef1@univ-tulear.mg', 'first_name': 'Hery', 'last_name': 'Rasoanaivo', 'role': Utilisateur.Role.CHEF_SERVICE}
+        defaults={'email': 'chef1@univ-toliara.mg', 'first_name': 'Hery', 'last_name': 'Rasoanaivo', 'role': Utilisateur.Role.CHEF_SERVICE}
     )
     u_chef.role = Utilisateur.Role.CHEF_SERVICE
     u_chef.set_password('password123')
@@ -23,7 +24,7 @@ def populate():
     # 2. Scolarité Centrale
     u_scol, _ = Utilisateur.objects.get_or_create(
         username='scolarite1',
-        defaults={'email': 'scolarite1@univ-tulear.mg', 'first_name': 'Mialy', 'last_name': 'Ralaivao', 'role': Utilisateur.Role.SCOLARITE_CENTRALE}
+        defaults={'email': 'scolarite1@univ-toliara.mg', 'first_name': 'Mialy', 'last_name': 'Ralaivao', 'role': Utilisateur.Role.SCOLARITE_CENTRALE}
     )
     u_scol.role = Utilisateur.Role.SCOLARITE_CENTRALE
     u_scol.set_password('password123')
@@ -32,7 +33,7 @@ def populate():
     # 3. Imprimeur
     u_imp, _ = Utilisateur.objects.get_or_create(
         username='imprimeur1',
-        defaults={'email': 'imprimeur1@univ-tulear.mg', 'first_name': 'Jean', 'last_name': 'Rakoto', 'role': Utilisateur.Role.IMPRIMEUR}
+        defaults={'email': 'imprimeur1@univ-toliara.mg', 'first_name': 'Jean', 'last_name': 'Rakoto', 'role': Utilisateur.Role.IMPRIMEUR}
     )
     u_imp.role = Utilisateur.Role.IMPRIMEUR
     u_imp.set_password('password123')
@@ -41,7 +42,7 @@ def populate():
     # 4. Présidence
     u_pres, _ = Utilisateur.objects.get_or_create(
         username='presidence1',
-        defaults={'email': 'presidence1@univ-tulear.mg', 'first_name': 'Prof.', 'last_name': 'Andriamanantena', 'role': Utilisateur.Role.PRESIDENCE}
+        defaults={'email': 'presidence1@univ-toliara.mg', 'first_name': 'Prof.', 'last_name': 'Andriamanantena', 'role': Utilisateur.Role.PRESIDENCE}
     )
     u_pres.role = Utilisateur.Role.PRESIDENCE
     u_pres.set_password('password123')
@@ -124,7 +125,7 @@ def populate():
     for data in etudiants_data:
         u_et, _ = Utilisateur.objects.get_or_create(
             username=data['username'],
-            defaults={'email': f"{data['username']}@student.univ-tulear.mg", 'first_name': data['prenom'], 'last_name': data['nom'], 'role': Utilisateur.Role.ETUDIANT}
+            defaults={'email': f"{data['username']}@student.univ-toliara.mg", 'first_name': data['prenom'], 'last_name': data['nom'], 'role': Utilisateur.Role.ETUDIANT}
         )
         u_et.set_password('password123')
         u_et.save()
@@ -157,6 +158,15 @@ def populate():
             demande.date_signature = timezone.now()
             demande.date_impression = timezone.now()
             demande.save()
+            Diplome.objects.get_or_create(
+                demande=demande,
+                defaults={
+                    'numero_diplome': Diplome.generer_numero(demande.date_signature.year),
+                    'code_verification': Diplome.generer_code_verification(),
+                    'mention': 'Très Bien',
+                    'date_delivrance': demande.date_signature.date(),
+                }
+            )
 
         Historique.objects.get_or_create(
             demande=demande,
@@ -164,7 +174,7 @@ def populate():
             action_realisee=f"Dossier initialisé à l'état '{demande.get_statut_display()}'"
         )
 
-    print("SUCCESS: Donnees de test generees avec succes pour l'Universite de Tulear !")
+    print("SUCCESS: Donnees de test generees avec succes pour l'Universite de Toliara !")
 
 if __name__ == '__main__':
     populate()

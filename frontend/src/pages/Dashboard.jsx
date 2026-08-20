@@ -3,26 +3,16 @@ import AppLayout from '../components/AppLayout';
 import { useAuth } from '../components/AuthContext';
 import StepperProgress from '../components/StepperProgress';
 import { demandesAPI } from '../services/api';
-import { 
-  CheckSquare, 
-  XSquare, 
-  Printer, 
-  Award, 
-  Search, 
-  Filter, 
-  FileText, 
-  UserCheck, 
-  BarChart2, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  Building2, 
-  Eye, 
-  MessageSquare,
-  Sparkles,
-  Send,
-  Users,
-  Download
+import {
+  Printer,
+  Award,
+  Search,
+  FileText,
+  CheckCircle2,
+  Clock,
+  Eye,
+  Download,
+  X
 } from 'lucide-react';
 import StatCards from '../components/StatCards';
 import DashboardCharts from '../components/DashboardCharts';
@@ -42,8 +32,8 @@ const Dashboard = () => {
   
   // Modal state
   const [selectedDemande, setSelectedDemande] = useState(null);
-  const [historiqueDemande, setHistoriqueDemande] = useState([]);
   const [observationInput, setObservationInput] = useState('');
+  const [mentionInput, setMentionInput] = useState('');
   const [submittingAction, setSubmittingAction] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -62,7 +52,7 @@ const Dashboard = () => {
 
       if (user?.role === 'PRESIDENCE') {
         try {
-          const kpiRes = await demandesAPI.get('demandes/kpi_presidence/');
+          const kpiRes = await demandesAPI.getKpiPresidence();
           setPresidenceKpi(kpiRes.data);
         } catch (e) {
           console.error('KPI error', e);
@@ -116,32 +106,23 @@ const Dashboard = () => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const fetchHistorique = async (demandeId) => {
-    try {
-      const res = await demandesAPI.get(`historique/?demande=${demandeId}`);
-      setHistoriqueDemande(res.data || []);
-    } catch (e) {
-      console.error('Erreur historique', e);
-    }
-  };
-
   const handleOpenModal = (demande) => {
+    // L'historique complet est déjà inclus dans la demande (voir DemandeDiplomeSerializer).
     setSelectedDemande(demande);
-    setHistoriqueDemande([]);
-    fetchHistorique(demande.id);
   };
 
   const handlePasserEtape = async (demandeId, actionType) => {
     setSubmittingAction(true);
     try {
-      await demandesAPI.passerEtape(demandeId, actionType, observationInput);
+      await demandesAPI.passerEtape(demandeId, actionType, observationInput, mentionInput);
       showToast("L'étape du dossier a été mise à jour avec succès !", "success");
       setSelectedDemande(null);
       setObservationInput('');
+      setMentionInput('');
       await fetchDemandesData();
     } catch (error) {
       console.error('Erreur lors du changement d\'étape:', error);
-      showToast("Erreur lors de la mise à jour du dossier.", "error");
+      showToast(error.response?.data?.error || "Erreur lors de la mise à jour du dossier.", "error");
     } finally {
       setSubmittingAction(false);
     }
@@ -154,11 +135,15 @@ const Dashboard = () => {
       case 'SCOLARITE_PREPAREE': return <span className="badge badge-preparee">Préparée Scolarité</span>;
       case 'IMPRIMEE': return <span className="badge badge-imprimee">Imprimée</span>;
       case 'SIGNEE': return <span className="badge badge-verifiee">Signée Présidence</span>;
-      case 'DISPONIBLE': return <span className="badge badge-disponibile">Disponible au Retrait</span>;
+      case 'DISPONIBLE': return <span className="badge badge-disponible">Disponible au Retrait</span>;
       case 'REFUSEE': return <span className="badge badge-refusee">Refusée</span>;
       default: return <span className="badge">{statut}</span>;
     }
   };
+
+  const historiqueDemande = selectedDemande
+    ? [...(selectedDemande.historique || [])].sort((a, b) => new Date(b.date_action) - new Date(a.date_action))
+    : [];
 
   return (
     <AppLayout>
@@ -189,13 +174,13 @@ const Dashboard = () => {
         {/* Top Header Title */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1d70b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#c0000c', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Espace de Travail Administratif
             </span>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0a3641', marginTop: '0.2rem' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#070b19', marginTop: '0.2rem' }}>
               {user?.role === 'CHEF_SERVICE' && 'Vérification & Validation par le Chef de Service'}
               {user?.role === 'SCOLARITE_CENTRALE' && 'Préparation des Dossiers Académiques'}
-              {user?.role === 'IMPRIMEE' || user?.role === 'IMPRIMEUR' ? 'File d\'Impression des Diplômes' : ''}
+              {user?.role === 'IMPRIMEUR' && 'File d\'Impression des Diplômes'}
               {user?.role === 'PRESIDENCE' && 'Tableau de Bord Stratégique & Signatures'}
             </h1>
           </div>
@@ -229,7 +214,7 @@ const Dashboard = () => {
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
-                color: '#0a3641',
+                color: '#070b19',
                 fontWeight: 500
               }}
             >
@@ -249,7 +234,7 @@ const Dashboard = () => {
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
-                color: '#0a3641',
+                color: '#070b19',
                 fontWeight: 500
               }}
             >
@@ -275,14 +260,14 @@ const Dashboard = () => {
 
         {/* PRESIDENCE EXECUTIVE KPI */}
         {user?.role === 'PRESIDENCE' && presidenceKpi && (
-          <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '2rem', backgroundColor: '#e6f0f3', border: '1px solid #cbd5e1' }}>
+          <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '2rem', backgroundColor: '#fff0ee', border: '1px solid #cbd5e1' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ background: '#0a3641', color: '#fff', padding: '1rem', borderRadius: '12px' }}>
+              <div style={{ background: '#070b19', color: '#fff', padding: '1rem', borderRadius: '12px' }}>
                 <Clock size={24} />
               </div>
               <div>
                 <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Délai Moyen de Délivrance</span>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0a3641' }}>{presidenceKpi.delai_moyen_jours} Jours</h3>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#070b19' }}>{presidenceKpi.delai_moyen_jours} Jours</h3>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -303,8 +288,8 @@ const Dashboard = () => {
         <div className="card" style={{ borderRadius: '16px', overflow: 'hidden' }}>
           
           <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0a3641', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <FileText size={20} color="#0a3641" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#070b19', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FileText size={20} color="#070b19" />
               <span>Liste des Dossiers de Diplômes</span>
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -327,8 +312,12 @@ const Dashboard = () => {
               Aucun dossier ne correspond à vos critères de recherche.
             </div>
           ) : (
+            <>
+            <p className="scroll-hint-mobile" style={{ display: 'none', fontSize: '0.75rem', color: '#94a3b8', padding: '0.75rem 1.25rem 0' }}>
+              ← Faites glisser le tableau pour voir toutes les colonnes →
+            </p>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <table style={{ width: '100%', minWidth: '820px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     <th style={{ padding: '0.85rem 1.25rem' }}>Dossier</th>
@@ -345,21 +334,21 @@ const Dashboard = () => {
                     return (
                       <tr key={item.id} style={{ borderBottom: '1px solid #e2e8f0', transition: 'background 0.15s' }} className="table-row-hover">
                         
-                        <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: '#0a3641' }}>
+                        <td style={{ padding: '1rem 1.25rem', fontWeight: 700, color: '#070b19' }}>
                           #{item.id}
                         </td>
 
                         <td style={{ padding: '1rem 1.25rem' }}>
-                          <span style={{ fontWeight: 700, color: '#0a3641', display: 'block' }}>{etu.nom} {etu.prenom}</span>
-                          <span style={{ fontSize: '0.775rem', color: '#1d70b8', fontWeight: 600 }}>{etu.matricule}</span>
+                          <span style={{ fontWeight: 700, color: '#070b19', display: 'block' }}>{etu.nom} {etu.prenom}</span>
+                          <span style={{ fontSize: '0.775rem', color: '#c0000c', fontWeight: 600 }}>{etu.matricule}</span>
                         </td>
 
                         <td style={{ padding: '1rem 1.25rem' }}>
-                          <span style={{ display: 'block', fontWeight: 600, color: '#0a3641' }}>{etu.faculte}</span>
+                          <span style={{ display: 'block', fontWeight: 600, color: '#070b19' }}>{etu.faculte}</span>
                           <span style={{ fontSize: '0.775rem', color: '#64748b' }}>{etu.filiere}</span>
                         </td>
 
-                        <td style={{ padding: '1rem 1.25rem', fontWeight: 600, color: '#1d70b8' }}>
+                        <td style={{ padding: '1rem 1.25rem', fontWeight: 600, color: '#c0000c' }}>
                           {item.type_diplome}
                         </td>
 
@@ -389,6 +378,7 @@ const Dashboard = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
 
         </div>
@@ -401,7 +391,7 @@ const Dashboard = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(10, 54, 65, 0.6)',
+            backgroundColor: 'rgba(7, 11, 25, 0.6)',
             backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
@@ -423,24 +413,24 @@ const Dashboard = () => {
               {/* Modal Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1d70b8', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#c0000c', textTransform: 'uppercase' }}>
                     Fiche du Dossier #{selectedDemande.id}
                   </span>
-                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0a3641' }}>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#070b19' }}>
                     {selectedDemande.etudiant_details?.nom} {selectedDemande.etudiant_details?.prenom}
                   </h3>
                 </div>
                 <button
-                  onClick={() => setSelectedDemande(null)}
-                  style={{ padding: '0.5rem', borderRadius: '50%', color: '#64748b', fontSize: '1.25rem', fontWeight: 700 }}
+                  onClick={() => { setSelectedDemande(null); setObservationInput(''); setMentionInput(''); }}
+                  style={{ padding: '0.5rem', borderRadius: '50%', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  ✕
+                  <X size={20} />
                 </button>
               </div>
 
               {/* Circuit Stepper */}
               <div style={{ marginBottom: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '0.775rem', fontWeight: 700, color: '#0a3641', display: 'block', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.775rem', fontWeight: 700, color: '#070b19', display: 'block', marginBottom: '0.5rem' }}>
                   Étape Actuelle dans le Circuit :
                 </span>
                 <StepperProgress currentStatut={selectedDemande.statut} />
@@ -450,26 +440,26 @@ const Dashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
                 <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
                   <span style={{ color: '#64748b', display: 'block' }}>Matricule</span>
-                  <strong style={{ color: '#0a3641' }}>{selectedDemande.etudiant_details?.matricule}</strong>
+                  <strong style={{ color: '#070b19' }}>{selectedDemande.etudiant_details?.matricule}</strong>
                 </div>
                 <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
                   <span style={{ color: '#64748b', display: 'block' }}>CIN</span>
-                  <strong style={{ color: '#0a3641' }}>{selectedDemande.etudiant_details?.cin}</strong>
+                  <strong style={{ color: '#070b19' }}>{selectedDemande.etudiant_details?.cin}</strong>
                 </div>
                 <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
                   <span style={{ color: '#64748b', display: 'block' }}>Faculté</span>
-                  <strong style={{ color: '#0a3641' }}>{selectedDemande.etudiant_details?.faculte}</strong>
+                  <strong style={{ color: '#070b19' }}>{selectedDemande.etudiant_details?.faculte}</strong>
                 </div>
                 <div style={{ padding: '0.75rem', background: '#f8fafc', borderRadius: '8px' }}>
                   <span style={{ color: '#64748b', display: 'block' }}>Filière</span>
-                  <strong style={{ color: '#0a3641' }}>{selectedDemande.etudiant_details?.filiere}</strong>
+                  <strong style={{ color: '#070b19' }}>{selectedDemande.etudiant_details?.filiere}</strong>
                 </div>
               </div>
 
               {/* Historique Timeline */}
               {historiqueDemande.length > 0 && (
                 <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0a3641', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#070b19', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Clock size={18} />
                     <span>Historique du Dossier</span>
                   </h4>
@@ -480,15 +470,10 @@ const Dashboard = () => {
                         <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: i === 0 ? '#10b981' : '#cbd5e1', border: '3px solid #f8fafc', flexShrink: 0 }} />
                         <div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '2rem' }}>
-                            <span style={{ fontWeight: 600, color: '#0a3641', fontSize: '0.85rem' }}>{h.action}</span>
+                            <span style={{ fontWeight: 600, color: '#070b19', fontSize: '0.85rem' }}>{h.action_realisee}</span>
                             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(h.date_action).toLocaleString()}</span>
                           </div>
                           <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '0.2rem' }}>Par: {h.utilisateur_details?.username} ({h.utilisateur_details?.role})</span>
-                          {h.observation && (
-                            <p style={{ fontSize: '0.8rem', color: '#475569', marginTop: '0.5rem', padding: '0.5rem', backgroundColor: '#ffffff', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                              "{h.observation}"
-                            </p>
-                          )}
                         </div>
                       </div>
                     ))}
@@ -498,7 +483,7 @@ const Dashboard = () => {
 
               {/* Observations / Comments */}
               <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#0a3641', marginBottom: '0.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#070b19', marginBottom: '0.5rem' }}>
                   Ajouter des Observations / Remarques de service :
                 </label>
                 <textarea
@@ -517,17 +502,54 @@ const Dashboard = () => {
                 />
               </div>
 
+              {/* Diplôme déjà réservé (numéro/code assignés dès l'impression) */}
+              {selectedDemande.diplome && (
+                <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fff0ee', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <span style={{ fontSize: '0.775rem', fontWeight: 700, color: '#070b19', display: 'block', marginBottom: '0.35rem' }}>
+                    Registre du diplôme
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: '#070b19' }}>
+                    N° {selectedDemande.diplome.numero_diplome} — Code de vérification : {selectedDemande.diplome.code_verification}
+                    {selectedDemande.diplome.mention && ` — Mention : ${selectedDemande.diplome.mention}`}
+                  </span>
+                </div>
+              )}
+
+              {/* Mention (Présidence, à la signature) */}
+              {user?.role === 'PRESIDENCE' && selectedDemande.statut === 'IMPRIMEE' && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#070b19', marginBottom: '0.5rem' }}>
+                    Mention (optionnel) :
+                  </label>
+                  <select
+                    className="input-field"
+                    value={mentionInput}
+                    onChange={(e) => setMentionInput(e.target.value)}
+                    style={{ width: '100%', padding: '0.65rem', fontSize: '0.875rem', borderRadius: '8px', border: '1.5px solid #cbd5e1' }}
+                  >
+                    <option value="">Aucune</option>
+                    <option value="Passable">Passable</option>
+                    <option value="Assez Bien">Assez Bien</option>
+                    <option value="Bien">Bien</option>
+                    <option value="Très Bien">Très Bien</option>
+                    <option value="Excellent">Excellent</option>
+                  </select>
+                </div>
+              )}
+
               {/* Role Specific Action Buttons */}
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem', flexWrap: 'wrap' }}>
-                
-                <button
-                  type="button"
-                  onClick={() => handlePasserEtape(selectedDemande.id, 'REFUSER')}
-                  disabled={submittingAction}
-                  className="btn btn-danger"
-                >
-                  Refuser le Dossier
-                </button>
+
+                {['RECUE', 'VERIFIEE_CHEF', 'SCOLARITE_PREPAREE', 'IMPRIMEE'].includes(selectedDemande.statut) && (
+                  <button
+                    type="button"
+                    onClick={() => handlePasserEtape(selectedDemande.id, 'REFUSER')}
+                    disabled={submittingAction}
+                    className="btn btn-danger"
+                  >
+                    Refuser le Dossier
+                  </button>
+                )}
 
                 {/* CHEF DE SERVICE ACTIONS */}
                 {user?.role === 'CHEF_SERVICE' && selectedDemande.statut === 'RECUE' && (
@@ -542,7 +564,7 @@ const Dashboard = () => {
                 )}
 
                 {/* SCOLARITE ACTIONS */}
-                {user?.role === 'SCOLARITE_CENTRALE' && (selectedDemande.statut === 'VERIFIEE_CHEF' || selectedDemande.statut === 'RECUE') && (
+                {user?.role === 'SCOLARITE_CENTRALE' && selectedDemande.statut === 'VERIFIEE_CHEF' && (
                   <button
                     type="button"
                     onClick={() => handlePasserEtape(selectedDemande.id, 'PREPARER_SCOLARITE')}
@@ -554,7 +576,7 @@ const Dashboard = () => {
                 )}
 
                 {/* IMPRIMEUR ACTIONS */}
-                {(user?.role === 'IMPRIMEUR' || user?.role === 'IMPRIMEE') && (
+                {user?.role === 'IMPRIMEUR' && selectedDemande.statut === 'SCOLARITE_PREPAREE' && (
                   <button
                     type="button"
                     onClick={() => handlePasserEtape(selectedDemande.id, 'IMPRIMER')}
@@ -568,27 +590,27 @@ const Dashboard = () => {
                 )}
 
                 {/* PRESIDENCE ACTIONS */}
-                {user?.role === 'PRESIDENCE' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handlePasserEtape(selectedDemande.id, 'SIGNER')}
-                      disabled={submittingAction}
-                      className="btn btn-outline"
-                    >
-                      Signer le Diplôme
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handlePasserEtape(selectedDemande.id, 'DISPONIBLE')}
-                      disabled={submittingAction}
-                      className="btn btn-primary"
-                      style={{ backgroundColor: '#10b981' }}
-                    >
-                      <Award size={18} />
-                      <span>Marquer Disponible au Retrait (Public)</span>
-                    </button>
-                  </>
+                {user?.role === 'PRESIDENCE' && selectedDemande.statut === 'IMPRIMEE' && (
+                  <button
+                    type="button"
+                    onClick={() => handlePasserEtape(selectedDemande.id, 'SIGNER')}
+                    disabled={submittingAction}
+                    className="btn btn-outline"
+                  >
+                    Signer le Diplôme
+                  </button>
+                )}
+                {user?.role === 'PRESIDENCE' && selectedDemande.statut === 'SIGNEE' && (
+                  <button
+                    type="button"
+                    onClick={() => handlePasserEtape(selectedDemande.id, 'DISPONIBLE')}
+                    disabled={submittingAction}
+                    className="btn btn-primary"
+                    style={{ backgroundColor: '#10b981' }}
+                  >
+                    <Award size={18} />
+                    <span>Marquer Disponible au Retrait (Public)</span>
+                  </button>
                 )}
 
               </div>

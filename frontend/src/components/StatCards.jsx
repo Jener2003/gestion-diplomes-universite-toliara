@@ -14,7 +14,7 @@ const StatCard = ({ title, value, icon, color, delay }) => (
     </div>
     <div>
       <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>{title}</span>
-      <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0a3641', margin: 0, lineHeight: 1 }}>{value}</h3>
+      <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#070b19', margin: 0, lineHeight: 1 }}>{value}</h3>
     </div>
   </motion.div>
 );

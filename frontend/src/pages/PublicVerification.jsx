@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import TulearLogo from '../components/TulearLogo';
+import ToliaraLogo from '../components/ToliaraLogo';
 import { demandesAPI } from '../services/api';
 import { 
   Search, 
@@ -18,7 +18,7 @@ import {
 
 const PublicVerification = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = searchParams.get('q') || '';
+  const initialQuery = searchParams.get('q') || searchParams.get('code') || '';
   const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -52,7 +52,7 @@ const PublicVerification = () => {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', color: '#0f172a', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', color: '#0f172a', fontFamily: 'Manrope, system-ui, sans-serif' }}>
       
       {/* Top Header */}
       <header style={{
@@ -61,9 +61,9 @@ const PublicVerification = () => {
         padding: '1rem 2rem',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
       }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <TulearLogo size="medium" />
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <Link to="/" className="header-brand" style={{ textDecoration: 'none', minWidth: 0 }}>
+            <ToliaraLogo size="medium" />
           </Link>
           <Link to="/" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
             <ArrowLeft size={16} />
@@ -83,21 +83,22 @@ const PublicVerification = () => {
             gap: '0.5rem',
             padding: '0.35rem 0.9rem',
             borderRadius: '9999px',
-            backgroundColor: '#e6f0f3',
-            color: '#0a3641',
+            backgroundColor: '#fff0ee',
+            color: '#070b19',
             fontSize: '0.8rem',
             fontWeight: 700,
             marginBottom: '1rem'
           }}>
-            <ShieldCheck size={16} color="#0a3641" />
+            <ShieldCheck size={16} color="#070b19" />
             <span>Guichet Public de Vérification Officiel</span>
           </div>
 
-          <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0a3641', marginBottom: '0.75rem' }}>
+          <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#070b19', marginBottom: '0.75rem' }}>
             Vérifier la disponibilité de mon diplôme
           </h1>
           <p style={{ color: '#64748b', fontSize: '1rem' }}>
-            Saisissez votre <strong>Matricule étudiant</strong> (ex: TUL-2026-005) ou votre <strong>Nom / Prénom</strong>.
+            Saisissez votre <strong>Matricule étudiant</strong> (ex: TUL-2026-005), votre <strong>Nom / Prénom</strong>,
+            ou le <strong>code de vérification</strong> imprimé sur le diplôme.
           </p>
         </div>
 
@@ -142,8 +143,8 @@ const PublicVerification = () => {
         {/* Results Presentation Area */}
         {loading && (
           <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-            <div style={{ width: '40px', height: '40px', border: '3px solid #cbd5e1', borderTopColor: '#0a3641', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
-            <p style={{ color: '#64748b' }}>Consultation des registres de la Présidence de l'Université de Tuléar...</p>
+            <div style={{ width: '40px', height: '40px', border: '3px solid #cbd5e1', borderTopColor: '#070b19', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 1rem' }} />
+            <p style={{ color: '#64748b' }}>Consultation des registres de la Présidence de l'Université de Toliara...</p>
             <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
           </div>
         )}
@@ -171,33 +172,47 @@ const PublicVerification = () => {
                     
                     <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Matricule Étudiant</span>
-                      <strong style={{ fontSize: '1rem', color: '#0a3641' }}>{result.matricule}</strong>
+                      <strong style={{ fontSize: '1rem', color: '#070b19' }}>{result.matricule}</strong>
                     </div>
 
                     <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Nom & Prénom</span>
-                      <strong style={{ fontSize: '1rem', color: '#0a3641' }}>{result.nom} {result.prenom}</strong>
+                      <strong style={{ fontSize: '1rem', color: '#070b19' }}>{result.nom} {result.prenom}</strong>
                     </div>
 
                     <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Faculté / Établissement</span>
-                      <strong style={{ fontSize: '0.95rem', color: '#0a3641' }}>{result.faculte}</strong>
+                      <strong style={{ fontSize: '0.95rem', color: '#070b19' }}>{result.faculte}</strong>
                     </div>
 
                     <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Filière / Spécialité</span>
-                      <strong style={{ fontSize: '0.95rem', color: '#0a3641' }}>{result.filiere}</strong>
+                      <strong style={{ fontSize: '0.95rem', color: '#070b19' }}>{result.filiere}</strong>
                     </div>
 
                     <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Type de Diplôme</span>
-                      <strong style={{ fontSize: '0.95rem', color: '#1d70b8' }}>{result.type_diplome}</strong>
+                      <strong style={{ fontSize: '0.95rem', color: '#c0000c' }}>{result.type_diplome}</strong>
                     </div>
 
                     <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Date de Disponibilité</span>
                       <strong style={{ fontSize: '0.95rem', color: '#10b981' }}>{result.date_disponibilite}</strong>
                     </div>
+
+                    {result.numero_diplome && (
+                      <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Numéro de Diplôme</span>
+                        <strong style={{ fontSize: '0.95rem', color: '#070b19' }}>{result.numero_diplome}</strong>
+                      </div>
+                    )}
+
+                    {result.mention && (
+                      <div style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Mention</span>
+                        <strong style={{ fontSize: '0.95rem', color: '#070b19' }}>{result.mention}</strong>
+                      </div>
+                    )}
 
                   </div>
 
@@ -248,7 +263,7 @@ const PublicVerification = () => {
                       </div>
                       <div style={{ padding: '0.65rem 0.85rem', background: '#f8fafc', borderRadius: '6px', fontSize: '0.85rem' }}>
                         <span style={{ color: '#64748b', display: 'block' }}>Étape actuelle:</span>
-                        <strong style={{ color: '#1d70b8' }}>{result.statut_display || 'En cours de validation'}</strong>
+                        <strong style={{ color: '#c0000c' }}>{result.statut_display || 'En cours de validation'}</strong>
                       </div>
                     </div>
                   )}
