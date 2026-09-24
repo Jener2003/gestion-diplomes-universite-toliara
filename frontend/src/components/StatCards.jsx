@@ -1,56 +1,253 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import {
+  FileText,
+  Clock,
+  Printer,
+  CheckCircle2,
+  AlertTriangle,
+  Truck,
+  Award,
+  PenTool,
+  Send,
+  Building2
+} from 'lucide-react';
 
-const StatCard = ({ title, value, icon, color, delay }) => (
-  <motion.div 
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.3, delay }}
-    className="card" 
-    style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${color}` }}
+const StatCard = ({ title, value, icon, color }) => (
+  <div
+    className="card"
+    style={{
+      padding: '1.25rem 1.5rem',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '1.1rem',
+      borderLeft: `4px solid ${color}`,
+      backgroundColor: '#ffffff',
+      borderRadius: '14px',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+      border: '1px solid #e2e8f0'
+    }}
   >
-    <div style={{ backgroundColor: `${color}15`, color: color, padding: '1rem', borderRadius: '12px' }}>
+    <div style={{ backgroundColor: `${color}15`, color: color, padding: '0.85rem', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {icon}
     </div>
     <div>
-      <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>{title}</span>
-      <h3 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#070b19', margin: 0, lineHeight: 1 }}>{value}</h3>
+      <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        {title}
+      </span>
+      <h3 style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0a3641', margin: '0.2rem 0 0 0', lineHeight: 1 }}>
+        {value}
+      </h3>
     </div>
-  </motion.div>
+  </div>
 );
 
-const StatCards = ({ stats }) => {
+const StatCards = ({ stats, role, presidenceKpi }) => {
   if (!stats) return null;
 
+  if (role === 'SCOLARITE_ETABLISSEMENT') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <StatCard
+          title="Total Déposées"
+          value={stats.total || 0}
+          icon={<FileText size={22} />}
+          color="#00b4d8"
+        />
+        <StatCard
+          title="Dossiers Incomplets"
+          value={stats.dossier_incomplet || 0}
+          icon={<AlertTriangle size={22} />}
+          color="#f59e0b"
+        />
+        <StatCard
+          title="À Signer Doyen"
+          value={stats.attente_sig_etab || 0}
+          icon={<PenTool size={22} />}
+          color="#8b5cf6"
+        />
+        <StatCard
+          title="Prêts au Retrait"
+          value={stats.disponibles || 0}
+          icon={<CheckCircle2 size={22} />}
+          color="#10b981"
+        />
+      </div>
+    );
+  }
+
+  if (role === 'SCOLARITE_CENTRALE') {
+    const demandesRecues = stats.total || 0;
+    const enAttente = stats.en_attente_total ?? ((stats.en_attente_verif || 0) + (stats.dossier_incomplet || 0));
+    const validees = stats.validees_total ?? Math.max(0, demandesRecues - enAttente - (stats.refusees || 0));
+    const refusees = stats.refusees || 0;
+
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <StatCard
+          title="Demandes reçues"
+          value={demandesRecues}
+          icon={<FileText size={22} />}
+          color="#0a3641"
+        />
+        <StatCard
+          title="En attente"
+          value={enAttente}
+          icon={<Clock size={22} />}
+          color="#f59e0b"
+        />
+        <StatCard
+          title="Validées"
+          value={validees}
+          icon={<CheckCircle2 size={22} />}
+          color="#10b981"
+        />
+        <StatCard
+          title="Refusées"
+          value={refusees}
+          icon={<AlertTriangle size={22} />}
+          color="#ef4444"
+        />
+      </div>
+    );
+  }
+
+  if (role === 'CHEF_SERVICE') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <StatCard
+          title="À Affecter Imprimeur"
+          value={(stats.validees + stats.en_traitement) || 0}
+          icon={<Printer size={22} />}
+          color="#00b4d8"
+        />
+        <StatCard
+          title="En Impression"
+          value={(stats.en_attente_imp + stats.en_impression) || 0}
+          icon={<Clock size={22} />}
+          color="#3b82f6"
+        />
+        <StatCard
+          title="Signatures Doyen"
+          value={stats.attente_sig_etab || 0}
+          icon={<PenTool size={22} />}
+          color="#8b5cf6"
+        />
+        <StatCard
+          title="À Transmettre Présidence"
+          value={stats.signees_etab || 0}
+          icon={<Send size={22} />}
+          color="#10b981"
+        />
+      </div>
+    );
+  }
+
+  if (role === 'IMPRIMEUR') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <StatCard
+          title="À Imprimer"
+          value={stats.en_attente_imp || 0}
+          icon={<Printer size={22} />}
+          color="#f59e0b"
+        />
+        <StatCard
+          title="En Cours de Tirage"
+          value={stats.en_impression || 0}
+          icon={<Clock size={22} />}
+          color="#00b4d8"
+        />
+        <StatCard
+          title="Total Imprimés"
+          value={stats.imprimees || 0}
+          icon={<CheckCircle2 size={22} />}
+          color="#10b981"
+        />
+      </div>
+    );
+  }
+
+  if (role === 'AGENT_TRANSMISSION') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <StatCard
+          title="Navette vers Présidence"
+          value={stats.en_trans_pres || 0}
+          icon={<Truck size={22} />}
+          color="#6366f1"
+        />
+        <StatCard
+          title="Déposés Présidence"
+          value={stats.attente_sig_pres || 0}
+          icon={<Building2 size={22} />}
+          color="#f59e0b"
+        />
+        <StatCard
+          title="Navette Retour Scolarité"
+          value={(stats.signees_pres + stats.retour_scol) || 0}
+          icon={<Truck size={22} />}
+          color="#10b981"
+        />
+      </div>
+    );
+  }
+
+  if (role === 'PRESIDENCE') {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+        <StatCard
+          title="En Attente de Signature"
+          value={stats.attente_sig_pres || 0}
+          icon={<PenTool size={22} />}
+          color="#c0000c"
+        />
+        <StatCard
+          title="Signés par la Présidence"
+          value={presidenceKpi?.signes_president || stats.signees_pres || 0}
+          icon={<Award size={22} />}
+          color="#10b981"
+        />
+        <StatCard
+          title="Délai Moyen"
+          value={`${presidenceKpi?.delai_moyen_jours || 0} j`}
+          icon={<Clock size={22} />}
+          color="#00b4d8"
+        />
+        <StatCard
+          title="Total Diplômes Délivrés"
+          value={presidenceKpi?.total_diplomes_delivres || (stats.disponibles + stats.retirees) || 0}
+          icon={<CheckCircle2 size={22} />}
+          color="#0a3641"
+        />
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-      <StatCard 
-        title="Dossiers Reçus" 
-        value={stats.total || 0} 
-        icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>}
-        color="#f59e0b"
-        delay={0.1}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+      <StatCard
+        title="Total Demandes"
+        value={stats.total || 0}
+        icon={<FileText size={22} />}
+        color="#0a3641"
       />
-      <StatCard 
-        title="En cours" 
-        value={(stats.total - stats.disponibles) || 0} 
-        icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>}
-        color="#3b82f6"
-        delay={0.2}
+      <StatCard
+        title="En cours de traitement"
+        value={(stats.total - stats.disponibles - stats.retirees) || 0}
+        icon={<Clock size={22} />}
+        color="#00b4d8"
       />
-      <StatCard 
-        title="Imprimés" 
-        value={stats.imprimees || 0} 
-        icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>}
-        color="#06b6d4"
-        delay={0.3}
+      <StatCard
+        title="Imprimés"
+        value={stats.imprimees || 0}
+        icon={<Printer size={22} />}
+        color="#1d70b8"
       />
-      <StatCard 
-        title="Disponibles" 
-        value={stats.disponibles || 0} 
-        icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>}
+      <StatCard
+        title="Délivrés / Retirés"
+        value={(stats.disponibles + stats.retirees) || 0}
+        icon={<CheckCircle2 size={22} />}
         color="#10b981"
-        delay={0.4}
       />
     </div>
   );

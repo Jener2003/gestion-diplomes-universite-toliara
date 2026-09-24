@@ -42,18 +42,26 @@ API.interceptors.response.use(
 );
 
 export const authAPI = {
-  login: (username, password) => API.post('token/', { username, password }),
+  // 2FA Step 1: send OTP to email
+  loginStep1: (username, password) =>
+    API.post('auth/login/', { username, password }),
+  // 2FA Step 2: verify OTP and get JWT tokens
+  verifyOtp: (username, code) =>
+    API.post('auth/verify-otp/', { username, code }),
   getMe: () => API.get('utilisateurs/me/'),
+  getImprimeurs: () => API.get('utilisateurs/imprimeurs/'),
+  getAgentsTransmission: () => API.get('utilisateurs/agents_transmission/'),
 };
 
 export const demandesAPI = {
   getDemandes: (params = {}) => API.get('demandes/', { params }),
   getDemandeById: (id) => API.get(`demandes/${id}/`),
   creerDemande: (formData) => API.post('demandes/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  passerEtape: (id, action, observations = '', mention = '') => API.post(`demandes/${id}/passer_etape/`, { action, observations, mention }),
+  passerEtape: (id, payload) => API.post(`demandes/${id}/passer_etape/`, payload),
   getPublicVerification: (query) => API.get('demandes/public_verification/', { params: { query } }),
   getStatsOverview: () => API.get('demandes/stats_overview/'),
   getKpiPresidence: () => API.get('demandes/kpi_presidence/'),
+  getHistoriques: () => API.get('historiques/'),
 };
 
 export const etudiantsAPI = {
@@ -68,6 +76,11 @@ export const diplomesAPI = {
 export const notificationsAPI = {
   getNotifications: () => API.get('notifications/'),
   marquerLu: (id) => API.post(`notifications/${id}/marquer_lu/`),
+};
+
+export const chatbotAPI = {
+  ask: (message) => API.post('chatbot/ask/', { message }),
+  getSuggestions: () => API.get('chatbot/suggestions/'),
 };
 
 export default API;

@@ -13,12 +13,13 @@ const DashboardCharts = ({ stats }) => {
   }));
 
   const statusData = [
-    { name: 'Reçues', value: stats.recues || 0 },
-    { name: 'Vérifiées', value: stats.verifiees || 0 },
-    { name: 'Préparées', value: stats.preparees || 0 },
+    { name: 'En attente', value: (stats.en_attente_verif || 0) + (stats.dossier_incomplet || 0) },
+    { name: 'Validées', value: stats.validees_total || (stats.validees || 0) },
+    { name: 'En impression', value: (stats.en_attente_imp || 0) + (stats.en_impression || 0) },
     { name: 'Imprimées', value: stats.imprimees || 0 },
-    { name: 'Signées', value: stats.signees || 0 },
-    { name: 'Disponibles', value: stats.disponibles || 0 },
+    { name: 'Signées', value: (stats.signees_etab || 0) + (stats.signees_pres || 0) },
+    { name: 'Disponibles/Retirées', value: (stats.disponibles || 0) + (stats.retirees || 0) },
+    { name: 'Refusées', value: stats.refusees || 0 },
   ].filter(d => d.value > 0);
 
   return (

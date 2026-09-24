@@ -22,7 +22,7 @@ const ToliaraLogo = ({ size = 'medium', variant = 'light', showText = true }) =>
   }[size] || { logo: 48, text: 'text-base font-extrabold' };
 
   const textColor = variant === 'dark' ? '#ffffff' : '#070b19';
-  const subTextColor = variant === 'dark' ? '#94a3b8' : '#c0000c';
+  const subTextColor = variant === 'dark' ? '#38bdf8' : '#c0000c';
 
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', userSelect: 'none' }}>

@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/', include('demandes.urls')),
     path('api/', include('notifications.urls')),
     path('api/', include('diplomes.urls')),
+    path('api/chatbot/', include('chatbot.urls')),
 ]
 
 if settings.DEBUG:

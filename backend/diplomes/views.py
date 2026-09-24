@@ -7,15 +7,13 @@ from .serializers import DiplomeSerializer
 
 
 class DiplomeViewSet(viewsets.ReadOnlyModelViewSet):
-    # Registre en lecture seule : un Diplome n'est jamais créé/modifié via l'API,
-    # uniquement par le circuit (voir demandes.views.passer_etape aux étapes IMPRIMER/SIGNER).
-    queryset = Diplome.objects.all().select_related('demande__etudiant__utilisateur')
+    queryset = Diplome.objects.all().select_related('demande__etudiant')
     serializer_class = DiplomeSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
-        if user.role == Utilisateur.Role.ETUDIANT:
-            queryset = queryset.filter(demande__etudiant__utilisateur=user)
+        if user.role == Utilisateur.Role.SCOLARITE_ETABLISSEMENT and user.etablissement:
+            queryset = queryset.filter(demande__etudiant__faculte__icontains=user.etablissement)
         return queryset

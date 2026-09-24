@@ -18,6 +18,8 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / '.env')
+# Also load from the project root .env if present
+load_dotenv(BASE_DIR.parent.parent / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -56,6 +58,7 @@ INSTALLED_APPS = [
     'demandes',
     'diplomes',
     'notifications',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -90,15 +93,55 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.1/ref/settings/#databases
+# Try to import pymysql to support pure Python MySQL driver on Windows if mysqlclient build fails
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DB_ENGINE = os.environ.get('DB_ENGINE', 'django.db.backends.sqlite3')
+
+def is_mysql_available(host, port):
+    import socket
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.5)
+        result = sock.connect_ex((host or '127.0.0.1', int(port or 3306)))
+        sock.close()
+        return result == 0
+    except Exception:
+        return False
+
+if 'mysql' in DB_ENGINE and not is_mysql_available(os.environ.get('DB_HOST', '127.0.0.1'), os.environ.get('DB_PORT', 3306)):
+    print("[DATABASE NOTICE] Serveur MySQL inaccessible sur 127.0.0.1:3306. Utilisation automatique du fallback SQLite.")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+elif DB_ENGINE == 'django.db.backends.sqlite3':
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': BASE_DIR / os.environ.get('DB_NAME', 'db.sqlite3'),
+        }
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': os.environ.get('DB_NAME', ''),
+            'USER': os.environ.get('DB_USER', ''),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', ''),
+            'PORT': os.environ.get('DB_PORT', ''),
+            'OPTIONS': {
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            } if 'mysql' in DB_ENGINE else {}
+        }
+    }
 
 
 # Password validation
@@ -162,3 +205,23 @@ CORS_ALLOWED_ORIGINS = [
         'http://localhost:5173,http://127.0.0.1:5173'
     ).split(',') if o
 ]
+
+# ─── Email Configuration (2FA OTP) ──────────────────────────────────────────
+# In development: EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+#   → codes appear in the terminal (no real email sent)
+# In production : set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+#   and fill EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD in .env
+
+EMAIL_BACKEND = os.environ.get(
+    'EMAIL_BACKEND',
+    'django.core.mail.backends.console.EmailBackend'  # default: console for dev
+)
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get(
+    'DEFAULT_FROM_EMAIL',
+    'noreply@univ-toliara.mg'
+)

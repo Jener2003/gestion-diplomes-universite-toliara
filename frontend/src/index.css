@@ -13,6 +13,21 @@
   --color-teal: #048b9a;
   --color-cream: #fff0ee;
 
+  /* Palette Dark & Bleu Pétrole Moderne */
+  --color-petrol-darkest: #02060d;
+  --color-petrol-night: #040a14;
+  --color-petrol-deep: #061826;
+  --color-petrol-base: #0a2538;
+  --color-petrol: #0f4c5c;
+  --color-petrol-light: #0891b2;
+  --color-petrol-accent: #0ea5e9;
+  --color-petrol-neon: #00d2df;
+  --color-petrol-glow: rgba(14, 165, 233, 0.25);
+
+  --bg-dark-obsidian: #030712;
+  --bg-dark-surface: #070e1b;
+  --bg-dark-card: rgba(10, 22, 38, 0.65);
+
   --status-pending: #f59e0b;
   --status-verified: #3b82f6;
   --status-prepared: #8b5cf6;
@@ -36,10 +51,12 @@
     0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1),
     0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glow: 0 0 25px rgba(14, 165, 233, 0.35);
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-full: 9999px;
 
   --font-family: 'Manrope', system-ui, -apple-system, sans-serif;
@@ -79,7 +96,7 @@ button {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(14px);
   }
 
   to {
@@ -103,11 +120,24 @@ button {
 @keyframes pulseGlow {
   0%,
   100% {
-    box-shadow: 0 0 15px rgba(192, 0, 12, 0.2);
+    box-shadow: 0 0 20px rgba(14, 165, 233, 0.2);
+    border-color: rgba(14, 165, 233, 0.3);
   }
 
   50% {
-    box-shadow: 0 0 25px rgba(192, 0, 12, 0.4);
+    box-shadow: 0 0 35px rgba(14, 165, 233, 0.45);
+    border-color: rgba(14, 165, 233, 0.6);
+  }
+}
+
+@keyframes auroraFloat {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(20px, -15px) scale(1.08);
+    opacity: 0.95;
   }
 }
 
@@ -118,7 +148,39 @@ button {
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Dark SaaS & Petrol Modern Utilities */
+
+.dark-glass-card {
+  background: rgba(8, 17, 30, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  transition: var(--transition-smooth);
+}
+
+.dark-glass-card:hover {
+  border-color: rgba(14, 165, 233, 0.35);
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.6), 0 0 20px rgba(14, 165, 233, 0.15);
+  transform: translateY(-3px);
+}
+
+.text-gradient-petrol {
+  background: linear-gradient(135deg, #ffffff 30%, #38bdf8 70%, #00d2df 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-white {
+  background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Custom Scrollbar */

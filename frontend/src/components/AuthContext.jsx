@@ -32,10 +32,45 @@ export const AuthProvider = ({ children }) => {
     fetchCurrentUser();
   }, []);
 
-  const login = async (username, password) => {
+  /**
+   * Étape 1 : vérifie username+password, déclenche l'envoi de l'OTP par email.
+   * Retourne { otpRequired: true, username, emailHint, message } en cas de succès.
+   */
+  const loginStep1 = async (username, password) => {
     setLoading(true);
     try {
-      const response = await authAPI.login(username, password);
+      const response = await authAPI.loginStep1(username, password);
+      setLoading(false);
+      return {
+        otpRequired: true,
+        username: response.data.username,
+        emailHint: response.data.email_hint,
+        message: response.data.message,
+        devOtpCode: response.data.dev_otp_code,
+      };
+    } catch (error) {
+      setLoading(false);
+      let errorMsg = 'Identifiants incorrects.';
+      if (!error.response) {
+        errorMsg = 'Serveur backend inaccessible (vérifiez que Django fonctionne sur le port 8000).';
+      } else if (error.response.data?.detail) {
+        errorMsg = error.response.data.detail;
+      }
+      return {
+        otpRequired: false,
+        error: errorMsg,
+      };
+    }
+  };
+
+  /**
+   * Étape 2 : vérifie le code OTP, stocke les tokens JWT et charge le profil.
+   * Retourne { success: true, user } en cas de succès.
+   */
+  const loginStep2 = async (username, code) => {
+    setLoading(true);
+    try {
+      const response = await authAPI.verifyOtp(username, code);
       localStorage.setItem('access_token', response.data.access);
       localStorage.setItem('refresh_token', response.data.refresh);
       const loggedInUser = await fetchCurrentUser();
@@ -44,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
       return {
         success: false,
-        error: error.response?.data?.detail || 'Nom d\'utilisateur ou mot de passe incorrect.'
+        error: error.response?.data?.detail || 'Code de vérification incorrect.',
       };
     }
   };
@@ -55,7 +90,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser: fetchCurrentUser }}>
+    <AuthContext.Provider value={{ user, loading, loginStep1, loginStep2, logout, refreshUser: fetchCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );
