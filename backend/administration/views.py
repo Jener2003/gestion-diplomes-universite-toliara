@@ -5,6 +5,8 @@ from django.contrib.auth.password_validation import get_default_password_validat
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
@@ -254,6 +256,7 @@ class StatistiquesAdminView(EnFrancais, APIView):
     """Indicateurs du tableau de bord administrateur, calculés sur les données réelles."""
     permission_classes = [EstAdministrateurSysteme]
 
+    @extend_schema(tags=['Administration'], summary="Statistiques globales des comptes et des demandes", responses=OpenApiTypes.OBJECT)
     def get(self, request):
         comptes = Utilisateur.objects.all()
         total = comptes.count()
@@ -298,6 +301,7 @@ class RolesAdminView(EnFrancais, APIView):
     """Référentiel des rôles, calculé depuis les règles réellement appliquées par le backend."""
     permission_classes = [EstAdministrateurSysteme]
 
+    @extend_schema(tags=['Administration'], summary="Rôles et transitions autorisées du circuit", responses=OpenApiTypes.OBJECT)
     def get(self, request):
         effectifs = {
             ligne['role']: ligne for ligne in Utilisateur.objects.values('role').annotate(
@@ -331,6 +335,7 @@ class SecuriteAdminView(EnFrancais, APIView):
     """Paramètres de sécurité effectivement appliqués (consultation seule, aucun secret)."""
     permission_classes = [EstAdministrateurSysteme]
 
+    @extend_schema(tags=['Administration'], summary="Alertes et paramètres de sécurité", responses=OpenApiTypes.OBJECT)
     def get(self, request):
         validateurs = []
         for validateur in get_default_password_validators():
@@ -376,6 +381,7 @@ class EquipesNotificationView(EnFrancais, APIView):
     """Adresses de notification des cinq équipes métier (configurées ou non)."""
     permission_classes = [EstAdministrateurSysteme]
 
+    @extend_schema(tags=['Administration'], summary="Adresses de notification des équipes", responses=OpenApiTypes.OBJECT)
     def get(self, request):
         adresses = {a.role: a for a in AdresseNotificationEquipe.objects.select_related('modifie_par')}
         return Response([
@@ -394,6 +400,8 @@ class EquipeNotificationDetailView(EnFrancais, APIView):
             raise NotFound("Équipe inconnue.")
         return libelle
 
+    @extend_schema(tags=['Administration'], summary="Définit l'adresse de notification d'une équipe",
+                   request=AdresseEquipeSerializer, responses=OpenApiTypes.OBJECT)
     @transaction.atomic
     def put(self, request, role):
         libelle = self.get_libelle(role)
@@ -422,6 +430,7 @@ class EquipeNotificationTestView(EnFrancais, APIView):
     """Envoie un message de test à l'adresse d'une équipe (vérifie la configuration de messagerie)."""
     permission_classes = [EstAdministrateurSysteme]
 
+    @extend_schema(tags=['Administration'], summary="Envoie un message de test à une équipe", request=None, responses=OpenApiTypes.OBJECT)
     def post(self, request, role):
         adresse = AdresseNotificationEquipe.objects.filter(role=role).first()
         if adresse is None:

@@ -25,16 +25,21 @@ load_dotenv(BASE_DIR.parent.parent / '.env')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Fallback only works locally: set DJANGO_SECRET_KEY (e.g. via a .env file, see .env.example)
-# before deploying anywhere the code or this fallback value could be seen.
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
-    'django-insecure-@)rr^t&bjlku7sqd74z$cmoz#gr!obe+@3q%$ypg9)ktpfx_w8'
-)
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# Aucune clé n'est écrite dans le code : DJANGO_SECRET_KEY doit venir du .env (voir .env.example).
+# Hors DEBUG, son absence bloque le démarrage. En DEBUG, une clé temporaire est générée à chaque
+# lancement (sessions et jetons invalidés au redémarrage) ; le préfixe « django-insecure- »
+# garde l'alerte SECRET_KEY_FAIBLE visible dans l'espace Administration.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured("DJANGO_SECRET_KEY est obligatoire lorsque DJANGO_DEBUG=False.")
+    from django.core.management.utils import get_random_secret_key
+    SECRET_KEY = 'django-insecure-' + get_random_secret_key()
 
 ALLOWED_HOSTS = [h for h in os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h]
 
@@ -52,6 +57,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'corsheaders',
+    'drf_spectacular',
     
     # Local apps
     'utilisateurs',
@@ -197,7 +203,18 @@ AUTH_USER_MODEL = 'utilisateurs.Utilisateur'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# Documentation OpenAPI / Swagger (exposée uniquement en DEBUG, voir core/urls.py)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Gestion des Diplômes - Université de Toliara',
+    'DESCRIPTION': "Circuit de délivrance des diplômes : authentification 2FA, demandes, "
+                   "registre des diplômes, notifications, chatbot et administration système.",
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
 }
 
 CORS_ALLOWED_ORIGINS = [

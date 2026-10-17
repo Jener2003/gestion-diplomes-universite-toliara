@@ -42,14 +42,14 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id', 'is_active', 'date_joined', 'last_login')
 
-    def get_role_display(self, user):
+    def get_role_display(self, user) -> str:
         libelles = dict(Utilisateur.Role.choices)
         return libelles.get(user.role, f"Rôle obsolète ({user.role})")
 
-    def get_role_obsolete(self, user):
+    def get_role_obsolete(self, user) -> bool:
         return user.role not in Utilisateur.Role.values
 
-    def get_mot_de_passe_defini(self, user):
+    def get_mot_de_passe_defini(self, user) -> bool:
         return user.has_usable_password()
 
     def validate_username(self, value):

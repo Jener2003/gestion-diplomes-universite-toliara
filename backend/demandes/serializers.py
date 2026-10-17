@@ -32,11 +32,11 @@ class DemandeDiplomeSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('date_transmission_chef',)
 
-    def get_statut_display(self, demande):
+    def get_statut_display(self, demande) -> str:
         statut = STATUTS_HORS_PERIMETRE.get(demande.statut, demande.statut)
         if statut == DemandeDiplome.Statut.RETOUR_SCOLARITE:
             return 'En retour vers le Chef de service'
         return dict(DemandeDiplome.Statut.choices).get(statut, statut)
 
-    def get_statut(self, demande):
+    def get_statut(self, demande) -> str:
         return STATUTS_HORS_PERIMETRE.get(demande.statut, demande.statut)

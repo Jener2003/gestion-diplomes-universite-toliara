@@ -4,6 +4,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.password_validation import validate_password
@@ -30,6 +33,15 @@ class LoginStep1View(APIView):
     """
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        tags=['Authentification'],
+        summary="Étape 1 : identifiant et mot de passe (envoie le code OTP par e-mail)",
+        request=inline_serializer('ConnexionEtape1', {
+            'username': serializers.CharField(),
+            'password': serializers.CharField(),
+        }),
+        responses=OpenApiTypes.OBJECT,
+    )
     def post(self, request):
         username = request.data.get('username', '').strip()
         password = request.data.get('password', '').strip()
@@ -120,6 +132,15 @@ class LoginStep2View(APIView):
     """
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        tags=['Authentification'],
+        summary="Étape 2 : vérification du code OTP (délivre les jetons JWT)",
+        request=inline_serializer('ConnexionEtape2', {
+            'username': serializers.CharField(),
+            'code': serializers.CharField(help_text="Code à 6 chiffres reçu par e-mail"),
+        }),
+        responses=OpenApiTypes.OBJECT,
+    )
     def post(self, request):
         username = request.data.get('username', '').strip()
         code = request.data.get('code', '').strip()
@@ -205,6 +226,17 @@ class DefinirMotDePasseView(EnFrancais, APIView):
     """
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        tags=['Authentification'],
+        summary="Définition du mot de passe depuis le lien reçu par e-mail",
+        request=inline_serializer('DefinitionMotDePasse', {
+            'uid': serializers.CharField(),
+            'token': serializers.CharField(),
+            'mot_de_passe': serializers.CharField(),
+            'confirmation': serializers.CharField(),
+        }),
+        responses=OpenApiTypes.OBJECT,
+    )
     def post(self, request):
         uid = str(request.data.get('uid', '')).strip()
         jeton = str(request.data.get('token', '')).strip()

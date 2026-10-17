@@ -2,6 +2,9 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers
 
 from .services import ChatbotSecurityService
 
@@ -13,6 +16,12 @@ class ChatbotAskView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        tags=['Chatbot'],
+        summary="Pose une question à l'assistant (réponse limitée au rôle de l'agent)",
+        request=inline_serializer('QuestionChatbot', {'message': serializers.CharField()}),
+        responses=OpenApiTypes.OBJECT,
+    )
     def post(self, request):
         user = request.user
         message = request.data.get('message', '').strip()
@@ -35,6 +44,7 @@ class ChatbotSuggestionsView(APIView):
     """Retourne les suggestions de questions rapides adaptées au rôle."""
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(tags=['Chatbot'], summary="Suggestions de questions selon le rôle", responses=OpenApiTypes.OBJECT)
     def get(self, request):
         suggestions = ChatbotSecurityService.get_suggestions_for_role(request.user.role)
         return Response({"suggestions": suggestions}, status=status.HTTP_200_OK)
