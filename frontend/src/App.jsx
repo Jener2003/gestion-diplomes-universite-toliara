@@ -9,14 +9,27 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './components/AuthContext';
 import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
+import Archives from './pages/Archives';
+import DefinirMotDePasse from './pages/DefinirMotDePasse';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUtilisateurs from './pages/admin/AdminUtilisateurs';
+import AdminRoles from './pages/admin/AdminRoles';
+import AdminEquipes from './pages/admin/AdminEquipes';
+import AdminJournal from './pages/admin/AdminJournal';
+import AdminSecurite from './pages/admin/AdminSecurite';
+import { ROLES_METIER, ROLE_ADMIN } from './services/espaces';
 
-const ROLES_STAFF = [
-  'SCOLARITE_ETABLISSEMENT',
-  'SCOLARITE_CENTRALE',
-  'CHEF_SERVICE',
-  'IMPRIMEUR',
-  'AGENT_TRANSMISSION',
-  'PRESIDENCE'
+// Espaces métier uniquement : l'administrateur système n'y a pas accès
+const ROLES_STAFF = ROLES_METIER;
+
+// Espace Administrateur : routes protégées ici ET refusées par le serveur aux autres rôles
+const ROUTES_ADMIN = [
+  { path: '/administration', element: <AdminDashboard /> },
+  { path: '/administration/utilisateurs', element: <AdminUtilisateurs /> },
+  { path: '/administration/roles', element: <AdminRoles /> },
+  { path: '/administration/equipes', element: <AdminEquipes /> },
+  { path: '/administration/journal', element: <AdminJournal /> },
+  { path: '/administration/securite', element: <AdminSecurite /> },
 ];
 
 function App() {
@@ -28,6 +41,15 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/verification" element={<Navigate to="/login" replace />} />
+          {/* Lien personnel reçu par e-mail (création de compte / réinitialisation) */}
+          <Route path="/definir-mot-de-passe/:uid/:token" element={<DefinirMotDePasse />} />
+
+          {/* Espace Administrateur système */}
+          {ROUTES_ADMIN.map(({ path, element }) => (
+            <Route key={path} path={path} element={
+              <ProtectedRoute allowedRoles={[ROLE_ADMIN]}>{element}</ProtectedRoute>
+            } />
+          ))}
 
           {/* Intranet Personnel Administratif */}
           <Route path="/dashboard" element={
@@ -35,10 +57,15 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } />
+          <Route path="/archives" element={
+            <ProtectedRoute allowedRoles={['SCOLARITE_CENTRALE']}>
+              <Archives />
+            </ProtectedRoute>
+          } />
 
           {/* Enregistrement d'un dossier physique au guichet (Scolarité Établissement, Chef de Service, Scolarité Centrale) */}
           <Route path="/nouvelle-demande" element={
-            <ProtectedRoute allowedRoles={['SCOLARITE_ETABLISSEMENT', 'CHEF_SERVICE', 'SCOLARITE_CENTRALE', 'PRESIDENCE']}>
+            <ProtectedRoute allowedRoles={['SCOLARITE_ETABLISSEMENT', 'CHEF_SERVICE', 'SCOLARITE_CENTRALE']}>
               <NouvelleDemande />
             </ProtectedRoute>
           } />

@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchCurrentUser = async () => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
       return response.data;
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
-      localStorage.clear();
+      sessionStorage.clear();
       setUser(null);
       return null;
     } finally {
@@ -71,8 +71,8 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       const response = await authAPI.verifyOtp(username, code);
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
+      sessionStorage.setItem('access_token', response.data.access);
+      sessionStorage.setItem('refresh_token', response.data.refresh);
       const loggedInUser = await fetchCurrentUser();
       return { success: true, user: loggedInUser };
     } catch (error) {
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.clear();
+    sessionStorage.clear();
     setUser(null);
   };
 

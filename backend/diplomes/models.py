@@ -29,9 +29,14 @@ class Diplome(models.Model):
 
     @staticmethod
     def generer_numero(annee):
+        # Basé sur le plus grand numéro existant (et non le nombre de lignes),
+        # pour ne jamais réattribuer un numéro après une suppression.
         prefixe = f"UT-{annee}-"
-        compte = Diplome.objects.filter(numero_diplome__startswith=prefixe).count()
-        return f"{prefixe}{compte + 1:05d}"
+        numeros = Diplome.objects.select_for_update().filter(
+            numero_diplome__startswith=prefixe
+        ).values_list('numero_diplome', flat=True)
+        dernier = max((int(n[len(prefixe):]) for n in numeros if n[len(prefixe):].isdigit()), default=0)
+        return f"{prefixe}{dernier + 1:05d}"
 
     @staticmethod
     def generer_code_verification():

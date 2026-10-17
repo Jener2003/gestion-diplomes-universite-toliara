@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import UtilisateurViewSet, EtudiantViewSet
-from .views_auth import LoginStep1View, LoginStep2View
+from .views_auth import LoginStep1View, LoginStep2View, DefinirMotDePasseView
 
 router = DefaultRouter()
 router.register(r'utilisateurs', UtilisateurViewSet)
@@ -12,4 +12,6 @@ urlpatterns = [
     # 2FA Authentication endpoints
     path('auth/login/', LoginStep1View.as_view(), name='auth_login_step1'),
     path('auth/verify-otp/', LoginStep2View.as_view(), name='auth_verify_otp'),
+    # Lien personnel (création de compte / réinitialisation par l'administrateur)
+    path('auth/definir-mot-de-passe/', DefinirMotDePasseView.as_view(), name='auth_definir_mot_de_passe'),
 ]

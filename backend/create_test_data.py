@@ -15,7 +15,7 @@ def populate():
     print("--- Population des utilisateurs (6 rôles) et données de test (Université de Toliara) ---")
 
     # 1. Scolarité Établissement (Faculté des Sciences)
-    u_scol_sci, _ = Utilisateur.objects.get_or_create(
+    u_scol_sci, created = Utilisateur.objects.get_or_create(
         username='scol_sciences',
         defaults={
             'email': 'scol.sciences@univ-toliara.mg',
@@ -27,11 +27,12 @@ def populate():
     )
     u_scol_sci.role = Utilisateur.Role.SCOLARITE_ETABLISSEMENT
     u_scol_sci.etablissement = 'Faculté des Sciences'
-    u_scol_sci.set_password('password123')
+    if created:
+        u_scol_sci.set_password('Sciences-Toliara#26!')
     u_scol_sci.save()
 
     # 2. Scolarité Établissement (Faculté des Lettres - FLSH)
-    u_scol_lettres, _ = Utilisateur.objects.get_or_create(
+    u_scol_lettres, created = Utilisateur.objects.get_or_create(
         username='scol_lettres',
         defaults={
             'email': 'scol.lettres@univ-toliara.mg',
@@ -43,25 +44,27 @@ def populate():
     )
     u_scol_lettres.role = Utilisateur.Role.SCOLARITE_ETABLISSEMENT
     u_scol_lettres.etablissement = 'Faculté des Lettres et Sciences Humaines (FLSH)'
-    u_scol_lettres.set_password('password123')
+    if created:
+        u_scol_lettres.set_password('Lettres-Toliara#26!')
     u_scol_lettres.save()
 
     # 3. Scolarité Centrale
-    u_scol_centrale, _ = Utilisateur.objects.get_or_create(
+    u_scol_centrale, created = Utilisateur.objects.get_or_create(
         username='scolarite1',
         defaults={
             'email': 'scolarite1@univ-toliara.mg',
-            'first_name': 'Mialy',
-            'last_name': 'Ralaivao',
+            'first_name': 'Agent',
+            'last_name': 'Centrale',
             'role': Utilisateur.Role.SCOLARITE_CENTRALE
         }
     )
     u_scol_centrale.role = Utilisateur.Role.SCOLARITE_CENTRALE
-    u_scol_centrale.set_password('password123')
+    if created:
+        u_scol_centrale.set_password('Scolarite-Centrale#26!')
     u_scol_centrale.save()
 
     # 4. Chef de Service des Diplômes
-    u_chef, _ = Utilisateur.objects.get_or_create(
+    u_chef, created = Utilisateur.objects.get_or_create(
         username='chef1',
         defaults={
             'email': 'chef1@univ-toliara.mg',
@@ -71,11 +74,12 @@ def populate():
         }
     )
     u_chef.role = Utilisateur.Role.CHEF_SERVICE
-    u_chef.set_password('responsable2026')
+    if created:
+        u_chef.set_password('Chef-Diplomes#26!')
     u_chef.save()
 
     # 5. Concepteur / Imprimeur
-    u_imp, _ = Utilisateur.objects.get_or_create(
+    u_imp, created = Utilisateur.objects.get_or_create(
         username='imprimeur1',
         defaults={
             'email': 'imprimeur1@univ-toliara.mg',
@@ -85,11 +89,12 @@ def populate():
         }
     )
     u_imp.role = Utilisateur.Role.IMPRIMEUR
-    u_imp.set_password('password123')
+    if created:
+        u_imp.set_password('Concepteur-Imprimeur#26!')
     u_imp.save()
 
     # 6. Agent de Transmission
-    u_trans, _ = Utilisateur.objects.get_or_create(
+    u_trans, created = Utilisateur.objects.get_or_create(
         username='agent_trans1',
         defaults={
             'email': 'transmission1@univ-toliara.mg',
@@ -99,11 +104,12 @@ def populate():
         }
     )
     u_trans.role = Utilisateur.Role.AGENT_TRANSMISSION
-    u_trans.set_password('password123')
+    if created:
+        u_trans.set_password('Agent-Transmission#26!')
     u_trans.save()
 
     # 7. Présidence
-    u_pres, _ = Utilisateur.objects.get_or_create(
+    u_pres, created = Utilisateur.objects.get_or_create(
         username='presidence1',
         defaults={
             'email': 'presidence1@univ-toliara.mg',
@@ -113,7 +119,8 @@ def populate():
         }
     )
     u_pres.role = Utilisateur.Role.PRESIDENCE
-    u_pres.set_password('password123')
+    if created:
+        u_pres.set_password('President-Toliara#26!')
     u_pres.save()
 
     # Données Étudiants et Demandes à différentes étapes du processus réel
@@ -185,8 +192,8 @@ def populate():
             'filiere': 'Médecine Générale',
             'niveau_etude': 'Doctorat',
             'type_diplome': 'Diplôme d\'État de Docteur en Médecine',
-            'statut_init': Statut.EN_ATTENTE_SIGNATURE_ETABLISSEMENT,
-            'obs': 'Imprimé avec succès. Transmis pour signature du Doyen de Médecine.',
+            'statut_init': Statut.IMPRIME,
+            'obs': 'Diplôme imprimé et prêt à être confié à un agent de transmission.',
             'creator': u_chef
         },
         {
@@ -200,7 +207,7 @@ def populate():
             'niveau_etude': 'Licence 3',
             'type_diplome': 'Diplôme de Licence en Sciences Naturelles',
             'statut_init': Statut.EN_TRANSMISSION_PRESIDENT,
-            'obs': 'Signé par le Doyen des Sciences. Confié à agent_trans1.',
+            'obs': 'Confié à un agent de transmission pour acheminement à la Présidence.',
             'creator': u_chef,
             'agent_trans': u_trans
         },
@@ -228,8 +235,8 @@ def populate():
             'filiere': 'Histoire et Patrimoine',
             'niveau_etude': 'Licence 3',
             'type_diplome': 'Diplôme de Licence en Histoire',
-            'statut_init': Statut.DISPONIBLE,
-            'obs': 'Signé par le Président, retourné et prêt pour remise à l\'étudiant.',
+            'statut_init': Statut.RETOUR_SCOLARITE,
+            'obs': 'Signé par le Président et acheminé en retour au Chef de service.',
             'creator': u_scol_lettres
         }
     ]
@@ -267,14 +274,10 @@ def populate():
 
         if data['statut_init'] in [
             Statut.IMPRIME,
-            Statut.EN_ATTENTE_SIGNATURE_ETABLISSEMENT,
-            Statut.SIGNE_ETABLISSEMENT,
             Statut.EN_TRANSMISSION_PRESIDENT,
             Statut.EN_ATTENTE_SIGNATURE_PRESIDENT,
             Statut.SIGNE_PRESIDENT,
             Statut.RETOUR_SCOLARITE,
-            Statut.DISPONIBLE,
-            Statut.RETIRE
         ]:
             demande.date_impression = timezone.now()
             Diplome.objects.get_or_create(
@@ -283,15 +286,9 @@ def populate():
                     'numero_diplome': Diplome.generer_numero(timezone.now().year),
                     'code_verification': Diplome.generer_code_verification(),
                     'mention': 'Bien',
-                    'date_delivrance': timezone.now().date() if data['statut_init'] in [Statut.SIGNE_PRESIDENT, Statut.RETOUR_SCOLARITE, Statut.DISPONIBLE, Statut.RETIRE] else None
+                    'date_delivrance': timezone.now().date() if data['statut_init'] in [Statut.SIGNE_PRESIDENT, Statut.RETOUR_SCOLARITE] else None
                 }
             )
-
-        if data['statut_init'] in [Statut.DISPONIBLE, Statut.RETIRE]:
-            demande.date_disponibilite = timezone.now()
-            demande.date_signature_president = timezone.now()
-            demande.date_signature_etablissement = timezone.now()
-            demande.save()
 
         Historique.objects.get_or_create(
             demande=demande,

@@ -5,9 +5,7 @@ import {
   FileText, 
   Check, 
   Printer, 
-  Award, 
   FileCheck, 
-  PenTool, 
   Truck,
   Building2,
   AlertTriangle,
@@ -19,11 +17,9 @@ const STAGES = [
   { key: 'SCOL_CENTRALE', label: '2. Scol. Centrale', icon: FileCheck },
   { key: 'AFFECTATION', label: '3. Traitement', icon: CheckCircle2 },
   { key: 'IMPRESSION', label: '4. Impression', icon: Printer },
-  { key: 'SIG_DOYEN', label: '5. Sig. Doyen', icon: PenTool },
-  { key: 'TRANSMISSION', label: '6. Navette Prés.', icon: Truck },
-  { key: 'SIG_PRESIDENT', label: '7. Sig. Président', icon: Building2 },
-  { key: 'DISPONIBLE', label: '8. Disponible', icon: Award },
-  { key: 'RETIRE', label: '9. Retiré', icon: UserCheck },
+  { key: 'TRANSMISSION', label: '5. Transmission Prés.', icon: Truck },
+  { key: 'SIG_PRESIDENT', label: '6. Sig. Président', icon: Building2 },
+  { key: 'RETOUR_CHEF', label: '7. Retour Chef', icon: UserCheck },
 ];
 
 const StepperProgress = ({ currentStatut }) => {
@@ -64,19 +60,13 @@ const StepperProgress = ({ currentStatut }) => {
       case 'EN_IMPRESSION':
       case 'IMPRIME':
         return 3;
-      case 'EN_ATTENTE_SIGNATURE_ETABLISSEMENT':
-      case 'SIGNE_ETABLISSEMENT':
-        return 4;
       case 'EN_TRANSMISSION_PRESIDENT':
       case 'EN_ATTENTE_SIGNATURE_PRESIDENT':
-        return 5;
+        return 4;
       case 'SIGNE_PRESIDENT':
-        return 6;
+        return 5;
       case 'RETOUR_SCOLARITE':
-      case 'DISPONIBLE':
-        return 7;
-      case 'RETIRE':
-        return 8;
+        return 6;
       default:
         return 0;
     }

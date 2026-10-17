@@ -8,6 +8,13 @@ class HistoriqueInline(admin.TabularInline):
     readonly_fields = ('utilisateur', 'action_realisee', 'date_action')
     can_delete = False
 
+    # Journal d'audit : ni ajout ni modification depuis l'admin Django
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
 
 @admin.register(DemandeDiplome)
 class DemandeDiplomeAdmin(admin.ModelAdmin):
@@ -21,3 +28,13 @@ class DemandeDiplomeAdmin(admin.ModelAdmin):
 class HistoriqueAdmin(admin.ModelAdmin):
     list_display = ('id', 'demande', 'utilisateur', 'action_realisee', 'date_action')
     list_filter = ('date_action',)
+
+    # Journal d'audit : consultation seule, même pour un superutilisateur
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -54,20 +54,8 @@ const StatCards = ({ stats, role, presidenceKpi }) => {
           color="#00b4d8"
         />
         <StatCard
-          title="Dossiers Incomplets"
-          value={stats.dossier_incomplet || 0}
-          icon={<AlertTriangle size={22} />}
-          color="#f59e0b"
-        />
-        <StatCard
-          title="À Signer Doyen"
-          value={stats.attente_sig_etab || 0}
-          icon={<PenTool size={22} />}
-          color="#8b5cf6"
-        />
-        <StatCard
-          title="Prêts au Retrait"
-          value={stats.disponibles || 0}
+          title="En attente de vérification"
+          value={stats.en_attente_verif || 0}
           icon={<CheckCircle2 size={22} />}
           color="#10b981"
         />
@@ -127,16 +115,16 @@ const StatCards = ({ stats, role, presidenceKpi }) => {
           color="#3b82f6"
         />
         <StatCard
-          title="Signatures Doyen"
-          value={stats.attente_sig_etab || 0}
-          icon={<PenTool size={22} />}
-          color="#8b5cf6"
-        />
-        <StatCard
-          title="À Transmettre Présidence"
-          value={stats.signees_etab || 0}
+          title="Diplômes imprimés à transmettre"
+          value={stats.imprimees || 0}
           icon={<Send size={22} />}
           color="#10b981"
+        />
+        <StatCard
+          title="Retours au Chef de service"
+          value={(stats.signees_pres || 0) + (stats.retour_scol || 0)}
+          icon={<CheckCircle2 size={22} />}
+          color="#8b5cf6"
         />
       </div>
     );
@@ -171,7 +159,7 @@ const StatCards = ({ stats, role, presidenceKpi }) => {
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
         <StatCard
-          title="Navette vers Présidence"
+          title="Acheminement vers la Présidence"
           value={stats.en_trans_pres || 0}
           icon={<Truck size={22} />}
           color="#6366f1"
@@ -183,7 +171,7 @@ const StatCards = ({ stats, role, presidenceKpi }) => {
           color="#f59e0b"
         />
         <StatCard
-          title="Navette Retour Scolarité"
+          title="Diplômes signés / retour au Chef"
           value={(stats.signees_pres + stats.retour_scol) || 0}
           icon={<Truck size={22} />}
           color="#10b981"
@@ -208,14 +196,14 @@ const StatCards = ({ stats, role, presidenceKpi }) => {
           color="#10b981"
         />
         <StatCard
-          title="Délai Moyen"
-          value={`${presidenceKpi?.delai_moyen_jours || 0} j`}
+          title="Délai moyen jusqu'à signature"
+          value={`${presidenceKpi?.delai_moyen_signature_jours || 0} j`}
           icon={<Clock size={22} />}
           color="#00b4d8"
         />
         <StatCard
-          title="Total Diplômes Délivrés"
-          value={presidenceKpi?.total_diplomes_delivres || (stats.disponibles + stats.retirees) || 0}
+          title="Total diplômes signés"
+          value={presidenceKpi?.total_diplomes_signes || (stats.signees_pres + stats.retour_scol) || 0}
           icon={<CheckCircle2 size={22} />}
           color="#0a3641"
         />
@@ -232,8 +220,8 @@ const StatCards = ({ stats, role, presidenceKpi }) => {
         color="#0a3641"
       />
       <StatCard
-        title="En cours de traitement"
-        value={(stats.total - stats.disponibles - stats.retirees) || 0}
+        title="En cours dans le circuit"
+        value={Math.max(0, (stats.total || 0) - (stats.refusees || 0) - (stats.retour_scol || 0))}
         icon={<Clock size={22} />}
         color="#00b4d8"
       />
@@ -244,8 +232,8 @@ const StatCards = ({ stats, role, presidenceKpi }) => {
         color="#1d70b8"
       />
       <StatCard
-        title="Délivrés / Retirés"
-        value={(stats.disponibles + stats.retirees) || 0}
+        title="Retours au Chef de service"
+        value={stats.retour_scol || 0}
         icon={<CheckCircle2 size={22} />}
         color="#10b981"
       />

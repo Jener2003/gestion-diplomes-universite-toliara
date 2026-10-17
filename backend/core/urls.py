@@ -18,16 +18,13 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # JWT Authentication endpoints
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    # JWT : les jetons ne sont délivrés qu'après la 2FA (api/auth/verify-otp/).
+    # Pas de api/token/ : il délivrait un jeton sur le seul mot de passe.
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Apps APIs endpoints
@@ -36,6 +33,7 @@ urlpatterns = [
     path('api/', include('notifications.urls')),
     path('api/', include('diplomes.urls')),
     path('api/chatbot/', include('chatbot.urls')),
+    path('api/administration/', include('administration.urls')),
 ]
 
 if settings.DEBUG:

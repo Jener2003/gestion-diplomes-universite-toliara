@@ -19,7 +19,7 @@ const ROLE_BADGE_INFO = {
   SCOLARITE_ETABLISSEMENT: { label: 'Scolarité Établissement', color: '#00b4d8', bg: '#e0f7fa' },
   SCOLARITE_CENTRALE: { label: 'Scolarité Centrale', color: '#048b9a', bg: '#ccfbf1' },
   CHEF_SERVICE: { label: 'Chef de Service', color: '#0a3641', bg: '#e2e8f0' },
-  IMPRIMEUR: { label: 'Service Imprimeur', color: '#1d70b8', bg: '#e0f2fe' },
+  IMPRIMEUR: { label: 'Concepteur / Imprimeur', color: '#1d70b8', bg: '#e0f2fe' },
   AGENT_TRANSMISSION: { label: 'Agent Transmission', color: '#6366f1', bg: '#e0e7ff' },
   PRESIDENCE: { label: 'Présidence', color: '#c0000c', bg: '#fee2e2' },
 };
@@ -56,7 +56,7 @@ const ChatbotWidget = () => {
 
       const defaultWelcome = {
         sender: 'bot',
-        text: `Bonjour **${user.first_name || user.username}** 👋 !\nJe suis votre **Assistant Virtuel Sécurisé** pour la gestion des diplômes.\n\n🔒 *Vos échanges et vos données sont strictement confidentiels et protégés par votre rôle (${roleInfo.label}).*`,
+        text: `Bonjour 👋 !\nJe suis votre **Assistant Virtuel Sécurisé** pour la gestion des diplômes.\n\n🔒 *Vos échanges et vos données sont strictement confidentiels et protégés par votre rôle (${roleInfo.label}).*`,
         timestamp: new Date()
       };
       setMessages([defaultWelcome]);
@@ -125,7 +125,7 @@ const ChatbotWidget = () => {
   const handleResetChat = () => {
     const resetMsg = {
       sender: 'bot',
-      text: `Conversation réinitialisée. Comment puis-je vous aider, **${user.first_name || user.username}** ?`,
+      text: `Conversation réinitialisée. Comment puis-je vous aider ?`,
       timestamp: new Date()
     };
     setMessages([resetMsg]);
@@ -136,47 +136,96 @@ const ChatbotWidget = () => {
       .catch(console.error);
   };
 
-  // Helper to format basic markdown (bold, lists, backticks)
+  // Helper to format rich markdown (bold, lists, backticks, tables, sub-items)
   const renderFormattedText = (content) => {
     if (!content) return null;
     const lines = content.split('\n');
-    return lines.map((line, idx) => {
-      // Process bold **text**
+    const elements = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // Markdown table parser
+      if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+        const tableLines = [];
+        while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+          tableLines.push(lines[i].trim());
+          i++;
+        }
+
+        if (tableLines.length >= 2) {
+          const headerCells = tableLines[0].split('|').slice(1, -1).map(c => c.trim());
+          const hasSeparator = tableLines[1].includes('---');
+          const rowLines = hasSeparator ? tableLines.slice(2) : tableLines.slice(1);
+
+          elements.push(
+            <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '0.6rem 0', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <tr>
+                    {headerCells.map((h, hIdx) => (
+                      <th key={hIdx} style={{ padding: '0.5rem 0.65rem', fontWeight: 700, color: '#0a3641' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rowLines.map((r, rIdx) => {
+                    const cells = r.split('|').slice(1, -1).map(c => c.trim());
+                    return (
+                      <tr key={rIdx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: rIdx % 2 === 0 ? '#ffffff' : '#fbfcfd' }}>
+                        {cells.map((c, cIdx) => (
+                          <td key={cIdx} style={{ padding: '0.45rem 0.65rem', color: '#334155' }}>
+                            <span dangerouslySetInnerHTML={{ __html: c.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`(.*?)`/g, '<code style="background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 4px; font-family: monospace;">$1</code>') }} />
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+          continue;
+        }
+      }
+
+      // Standard formatted line
       let formattedLine = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      // Process italic *text*
       formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em>$1</em>');
-      // Process inline code `text`
       formattedLine = formattedLine.replace(/`(.*?)`/g, '<code style="background: rgba(0,0,0,0.06); padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.85em;">$1</code>');
 
-      // Unordered list item
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+      if (line.trim().startsWith('↳')) {
+        elements.push(
+          <div key={i} style={{ marginLeft: '1.25rem', fontSize: '0.84em', color: '#64748b', marginTop: '0.15rem' }}>
+            <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
+          </div>
+        );
+      } else if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
         const itemContent = formattedLine.replace(/^[\s]*[-*]\s+/, '');
-        return (
-          <div key={idx} style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem' }}>
+        elements.push(
+          <div key={i} style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem' }}>
             <span style={{ color: '#048b9a', fontWeight: 'bold' }}>•</span>
             <span dangerouslySetInnerHTML={{ __html: itemContent }} />
           </div>
         );
-      }
-
-      // Ordered list item
-      if (/^\d+\.\s/.test(line.trim())) {
-        return (
-          <div key={idx} style={{ marginLeft: '0.2rem', marginTop: '0.2rem' }}>
+      } else if (/^\d+\.\s/.test(line.trim())) {
+        elements.push(
+          <div key={i} style={{ marginLeft: '0.2rem', marginTop: '0.2rem' }}>
             <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
           </div>
         );
+      } else if (!line.trim()) {
+        elements.push(<div key={i} style={{ height: '0.4rem' }} />);
+      } else {
+        elements.push(
+          <p key={i} style={{ margin: '0.25rem 0' }} dangerouslySetInnerHTML={{ __html: formattedLine }} />
+        );
       }
+      i++;
+    }
 
-      // Empty lines
-      if (!line.trim()) {
-        return <div key={idx} style={{ height: '0.4rem' }} />;
-      }
-
-      return (
-        <p key={idx} style={{ margin: '0.2rem 0' }} dangerouslySetInnerHTML={{ __html: formattedLine }} />
-      );
-    });
+    return elements;
   };
 
   if (!user) return null;

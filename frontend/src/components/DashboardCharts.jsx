@@ -17,8 +17,9 @@ const DashboardCharts = ({ stats }) => {
     { name: 'Validées', value: stats.validees_total || (stats.validees || 0) },
     { name: 'En impression', value: (stats.en_attente_imp || 0) + (stats.en_impression || 0) },
     { name: 'Imprimées', value: stats.imprimees || 0 },
-    { name: 'Signées', value: (stats.signees_etab || 0) + (stats.signees_pres || 0) },
-    { name: 'Disponibles/Retirées', value: (stats.disponibles || 0) + (stats.retirees || 0) },
+    { name: 'Transmission Présidence', value: stats.en_trans_pres || 0 },
+    { name: 'Signées par le Président', value: stats.signees_pres || 0 },
+    { name: 'Retour au Chef', value: stats.retour_scol || 0 },
     { name: 'Refusées', value: stats.refusees || 0 },
   ].filter(d => d.value > 0);
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext';
 import ToliaraLogo from '../components/ToliaraLogo';
+import { accueilParRole } from '../services/espaces';
 import heroPhoto from '../assets/hero-presidence.jpg';
 import {
   Lock,
@@ -13,12 +14,20 @@ import {
   UserCheck,
   Building2,
   Printer,
+  Truck,
   Landmark,
   ShieldCheck,
   RefreshCw,
   KeyRound,
   Shield
 } from 'lucide-react';
+
+// Sécurité : on empêche le navigateur de proposer « Enregistrer le mot de passe ».
+// Les navigateurs détectent les champs type="password" et ignorent autocomplete="off" ;
+// on utilise donc un champ texte masqué par CSS lorsque c'est supporté (Chrome, Edge, Safari),
+// sinon un vrai champ mot de passe (jamais affiché en clair).
+const MASQUAGE_CSS_SUPPORTE =
+  typeof CSS !== 'undefined' && CSS.supports?.('-webkit-text-security', 'disc');
 
 const Login = () => {
   // Step 1 state
@@ -68,7 +77,10 @@ const Login = () => {
     setLoading(false);
 
     if (res.success) {
-      navigate('/dashboard');
+      setPassword('');
+      setOtpCode('');
+      // Redirection vers l'espace autorisé du rôle (contrôlé aussi côté serveur)
+      navigate(accueilParRole(res.user?.role));
     } else {
       setError(res.error);
     }
@@ -88,17 +100,18 @@ const Login = () => {
     }
   };
 
-  const fillDemoAccount = (demoUsername) => {
-    setUsername(demoUsername);
+  const fillDemoAccount = (demoAccount) => {
+    setUsername(demoAccount.username);
     setPassword('');
     setError('');
     setStep(1);
   };
 
   const demoAccounts = [
-    { username: 'chef1', label: 'Chef de Service', role: 'Guichet & Dépôt', icon: UserCheck, color: '#38bdf8' },
-    { username: 'scolarite1', label: 'Scolarité', role: 'Contrôle PV', icon: Building2, color: '#0ea5e9' },
-    { username: 'imprimeur1', label: 'Imprimeur', role: 'Tirage Sécurisé', icon: Printer, color: '#06b6d4' },
+    { username: 'scolarite1', label: 'Scolarité Centrale', role: 'Contrôle Académique & PV', icon: Building2, color: '#38bdf8' },
+    { username: 'chef1', label: 'Chef de Service', role: 'Instruction & Affectation', icon: UserCheck, color: '#0ea5e9' },
+    { username: 'imprimeur1', label: 'Concepteur / Imprimeur', role: 'Conception & tirage sécurisé', icon: Printer, color: '#06b6d4' },
+    { username: 'agent_trans1', label: 'Agent de Transmission', role: 'Acheminement des diplômes', icon: Truck, color: '#6366f1' },
     { username: 'presidence1', label: 'Présidence', role: 'Signature & Sceau', icon: Landmark, color: '#10b981' }
   ];
 
@@ -293,7 +306,7 @@ const Login = () => {
                 borderRadius: '9999px'
               }}
             >
-              Session Intranet
+              Connexion du personnel
             </span>
           </div>
 
@@ -331,6 +344,7 @@ const Login = () => {
             <>
               <form
                 onSubmit={handleCredentialsSubmit}
+                autoComplete="off"
                 style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
               >
                 {/* Username Input */}
@@ -345,6 +359,10 @@ const Login = () => {
                     />
                     <input
                       type="text"
+                      name="ut-identifiant"
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       required
                       placeholder="Ex: chef1, scolarite1, presidence1..."
                       value={username}
@@ -384,12 +402,20 @@ const Login = () => {
                       style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }}
                     />
                     <input
-                      type={showPassword ? 'text' : 'password'}
+                      type={showPassword || MASQUAGE_CSS_SUPPORTE ? 'text' : 'password'}
+                      name="ut-code-acces"
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      data-lpignore="true"
+                      data-1p-ignore="true"
                       required
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       style={{
+                        WebkitTextSecurity: showPassword ? 'none' : 'disc',
                         width: '100%',
                         padding: '0.85rem 2.75rem 0.85rem 2.75rem',
                         fontSize: '0.925rem',
@@ -511,7 +537,7 @@ const Login = () => {
                       <button
                         key={i}
                         type="button"
-                        onClick={() => fillDemoAccount(acc.username)}
+                        onClick={() => fillDemoAccount(acc)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -599,6 +625,7 @@ const Login = () => {
 
               <form
                 onSubmit={handleOtpSubmit}
+                autoComplete="off"
                 style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
               >
                 <div>

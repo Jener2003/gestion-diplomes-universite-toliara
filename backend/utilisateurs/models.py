@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
-import random
+import secrets
 import string
 
 class Utilisateur(AbstractUser):
@@ -13,6 +13,29 @@ class Utilisateur(AbstractUser):
         IMPRIMEUR = 'IMPRIMEUR', _('Concepteur / Imprimeur')
         AGENT_TRANSMISSION = 'AGENT_TRANSMISSION', _('Agent de Transmission')
         PRESIDENCE = 'PRESIDENCE', _('Président de l\'Université')
+        # Administration technique uniquement : aucun droit sur les demandes
+        ADMIN_SYSTEME = 'ADMIN_SYSTEME', _('Administrateur système')
+
+    # Rôles du circuit des diplômes (seuls à accéder aux données métier)
+    ROLES_METIER = frozenset({
+        Role.SCOLARITE_ETABLISSEMENT,
+        Role.SCOLARITE_CENTRALE,
+        Role.CHEF_SERVICE,
+        Role.IMPRIMEUR,
+        Role.AGENT_TRANSMISSION,
+        Role.PRESIDENCE,
+    })
+
+    # Rôles que l'administrateur peut attribuer (la Scolarité d'établissement
+    # n'a pas d'espace dans cette application)
+    ROLES_ATTRIBUABLES = (
+        Role.SCOLARITE_CENTRALE,
+        Role.CHEF_SERVICE,
+        Role.IMPRIMEUR,
+        Role.AGENT_TRANSMISSION,
+        Role.PRESIDENCE,
+        Role.ADMIN_SYSTEME,
+    )
 
     role = models.CharField(
         max_length=50,
@@ -60,6 +83,7 @@ class Etudiant(models.Model):
 class OTPCode(models.Model):
     """Stores a temporary 6-digit OTP code for email-based 2FA."""
     OTP_VALIDITY_MINUTES = 10
+    MAX_TENTATIVES = 5
 
     utilisateur = models.ForeignKey(
         Utilisateur, on_delete=models.CASCADE, related_name='otp_codes'
@@ -67,11 +91,12 @@ class OTPCode(models.Model):
     code = models.CharField(max_length=6)
     created_at = models.DateTimeField(auto_now_add=True)
     is_used = models.BooleanField(default=False)
+    tentatives = models.PositiveSmallIntegerField(default=0, verbose_name=_('Tentatives erronées'))
 
     @staticmethod
     def generate_code():
-        """Generate a secure 6-digit numeric OTP."""
-        return ''.join(random.choices(string.digits, k=6))
+        """Generate a secure 6-digit numeric OTP (CSPRNG)."""
+        return ''.join(secrets.choice(string.digits) for _position in range(6))
 
     def is_valid(self):
         """True if the OTP is not used and not expired (within OTP_VALIDITY_MINUTES)."""

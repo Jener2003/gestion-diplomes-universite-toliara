@@ -1,5 +1,6 @@
 from django.test import TestCase
 from datetime import date
+from django.utils import timezone
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -26,7 +27,7 @@ class ChatbotPersonnelSecurityTestCase(TestCase):
             username='scolarite_centrale',
             password='Password123!',
             role=Utilisateur.Role.SCOLARITE_CENTRALE,
-            first_name='Mialy',
+            first_name='Agent',
             last_name='Centrale'
         )
 
@@ -102,7 +103,8 @@ class ChatbotPersonnelSecurityTestCase(TestCase):
             etudiant=self.etudiant_2,
             type_diplome='Doctorat Médecine',
             statut=DemandeDiplome.Statut.VALIDEE,
-            etablissement_origine='Faculté de Médecine'
+            etablissement_origine='Faculté de Médecine',
+            date_transmission_chef=timezone.now()
         )
 
         self.client = APIClient()
@@ -142,3 +144,135 @@ class ChatbotPersonnelSecurityTestCase(TestCase):
         response = self.client.post('/api/chatbot/ask/', {'message': 'Combien de demandes en attente ?'})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("Demandes en attente de vérification", response.data["reply"])
+
+    def test_scolarite_centrale_quick_access_queries(self):
+        """Vérifie l'accès rapide aux données par questions en langage naturel."""
+        # A. Total des demandes
+        res_total = ChatbotSecurityService.process_message(self.user_scolarite, "Combien de demandes de diplômes avons-nous reçues ?")
+        self.assertIn("Bilan global des demandes", res_total["reply"])
+        self.assertIn("2 dossier(s) au total", res_total["reply"])
+
+        # A. Demandes validées
+        res_val = ChatbotSecurityService.process_message(self.user_scolarite, "Affiche-moi toutes les demandes validées.")
+        self.assertIn("Demandes actuellement validées : 1", res_val["reply"])
+        self.assertIn("Rasoa Marie", res_val["reply"])
+
+        # B. Recherche par nom d'étudiant
+        res_nom = ChatbotSecurityService.process_message(self.user_scolarite, "Retrouve la demande de l'étudiant Rakoto")
+        self.assertIn("Dossier trouvé pour « Rakoto »", res_nom["reply"])
+        self.assertIn("Master Informatique", res_nom["reply"])
+
+        # B. Recherche par référence
+        res_ref = ChatbotSecurityService.process_message(self.user_scolarite, f"Recherche la demande portant la référence #{self.demande_1.id}")
+        self.assertIn(f"Demande #{self.demande_1.id}", res_ref["reply"])
+        self.assertIn("Rakoto Jean", res_ref["reply"])
+
+        # B. Recherche par cycle
+        res_cycle = ChatbotSecurityService.process_message(self.user_scolarite, "Quelles demandes concernent les étudiants en Master ?")
+        self.assertIn("Demandes concernant les étudiants en Master : 1", res_cycle["reply"])
+
+        # E. Question académique diplôme précédent
+        res_acad = ChatbotSecurityService.process_message(self.user_scolarite, "Quelle est l’année d’obtention du diplôme précédent de cet étudiant ?")
+        self.assertIn("diplôme demandé", res_acad["reply"])
+        self.assertIn("pas consignée", res_acad["reply"])
+
+        # E. Admission vérifiée
+        res_adm = ChatbotSecurityService.process_message(self.user_scolarite, f"L'admission de cet étudiant a-t-elle été vérifiée pour #{self.demande_1.id} ?")
+        self.assertIn("Statut du contrôle d'admission", res_adm["reply"])
+
+
+
+class ChatbotCloisonnementTestCase(TestCase):
+    """Chaque chatbot ne répond qu'avec les données de l'espace de l'utilisateur connecté."""
+
+    def setUp(self):
+        Statut = DemandeDiplome.Statut
+        self.imprimeur_a = Utilisateur.objects.create_user(username='imp_a', password='x', role=Utilisateur.Role.IMPRIMEUR)
+        self.imprimeur_b = Utilisateur.objects.create_user(username='imp_b', password='x', role=Utilisateur.Role.IMPRIMEUR)
+        self.agent = Utilisateur.objects.create_user(username='agent', password='x', role=Utilisateur.Role.AGENT_TRANSMISSION)
+        self.etab_sciences = Utilisateur.objects.create_user(
+            username='etab_sc', password='x', role=Utilisateur.Role.SCOLARITE_ETABLISSEMENT, etablissement='Faculté des Sciences'
+        )
+        self.etab_sans_rattachement = Utilisateur.objects.create_user(
+            username='etab_vide', password='x', role=Utilisateur.Role.SCOLARITE_ETABLISSEMENT, etablissement=''
+        )
+        self.centrale = Utilisateur.objects.create_user(username='centrale', password='x', role=Utilisateur.Role.SCOLARITE_CENTRALE)
+        self.chef = Utilisateur.objects.create_user(username='chef', password='x', role=Utilisateur.Role.CHEF_SERVICE)
+
+        etu_sc = Etudiant.objects.create(
+            matricule='SC-1', nom='Randria', prenom='Paul', date_naissance=date(2000, 1, 1),
+            cin='C-SC-1', faculte='Faculté des Sciences', filiere='Physique', niveau_etude='Licence'
+        )
+        etu_med = Etudiant.objects.create(
+            matricule='MED-1', nom='Vola', prenom='Hery', date_naissance=date(2000, 1, 1),
+            cin='C-MED-1', faculte='Faculté de Médecine', filiere='Médecine', niveau_etude='Doctorat'
+        )
+        # Dossier en début de circuit, à la Faculté de Médecine
+        self.dossier_medecine = DemandeDiplome.objects.create(
+            etudiant=etu_med, type_diplome='Doctorat Médecine',
+            statut=Statut.EN_ATTENTE_VERIFICATION, etablissement_origine='Faculté de Médecine'
+        )
+        # Dossier en impression, assigné à l'imprimeur B
+        self.dossier_imprimeur_b = DemandeDiplome.objects.create(
+            etudiant=etu_sc, type_diplome='Licence Physique',
+            statut=Statut.EN_IMPRESSION, etablissement_origine='Faculté des Sciences',
+            imprimeur_assigne=self.imprimeur_b
+        )
+
+    def ask(self, user, message):
+        return ChatbotSecurityService.process_message(user, message)["reply"]
+
+    def test_imprimeur_ne_voit_pas_dossier_hors_file(self):
+        reply = self.ask(self.imprimeur_a, f"Recherche le dossier #{self.dossier_medecine.id}")
+        self.assertIn("Aucune demande trouvée", reply)
+        self.assertNotIn("Vola", reply)
+
+    def test_imprimeur_ne_voit_pas_dossier_assigne_a_un_autre(self):
+        reply = self.ask(self.imprimeur_a, f"Recherche le dossier #{self.dossier_imprimeur_b.id}")
+        self.assertNotIn("Randria", reply)
+        self.assertIn("Randria", self.ask(self.imprimeur_b, f"Recherche le dossier #{self.dossier_imprimeur_b.id}"))
+
+    def test_historique_hors_perimetre_refuse(self):
+        reply = self.ask(self.agent, f"Donne-moi l'historique de la demande #{self.dossier_medecine.id}")
+        self.assertIn("introuvable dans votre périmètre", reply)
+
+    def test_recherche_par_nom_hors_perimetre(self):
+        self.assertNotIn("Vola", self.ask(self.agent, "Retrouve la demande de l'étudiant Vola"))
+        self.assertNotIn("Vola", self.ask(self.etab_sciences, "Retrouve la demande de l'étudiant Vola"))
+
+    def test_statistiques_limitees_au_perimetre(self):
+        reply = self.ask(self.etab_sciences, "Combien de demandes de diplômes avons-nous reçues ?")
+        self.assertIn("1 dossier(s) au total", reply)
+
+    def test_etablissement_sans_rattachement_ne_voit_rien(self):
+        reply = self.ask(self.etab_sans_rattachement, "Combien de demandes de diplômes avons-nous reçues ?")
+        self.assertIn("0 dossier(s) au total", reply)
+
+    def test_centrale_voit_toutes_les_demandes(self):
+        reply = self.ask(self.centrale, "Combien de demandes de diplômes avons-nous reçues ?")
+        self.assertIn("2 dossier(s) au total", reply)
+
+    def test_chef_ne_voit_que_les_dossiers_transmis(self):
+        """Le dossier en attente de vérification appartient à l'espace de la Scolarité Centrale."""
+        reply = self.ask(self.chef, f"Recherche le dossier #{self.dossier_medecine.id}")
+        self.assertIn("Aucune demande trouvée", reply)
+        self.assertNotIn("Vola", reply)
+
+    def test_etablissement_correspondance_exacte(self):
+        """« Faculté des Sciences » ne voit pas un établissement dont le nom la contient."""
+        etu = Etudiant.objects.create(
+            matricule='SCM-1', nom='Tiana', prenom='Lova', date_naissance=date(2000, 1, 1),
+            cin='C-SCM-1', faculte='Faculté des Sciences Marines', filiere='Océanographie', niveau_etude='Master'
+        )
+        DemandeDiplome.objects.create(
+            etudiant=etu, type_diplome='Master Océanographie',
+            statut=DemandeDiplome.Statut.EN_ATTENTE_VERIFICATION, etablissement_origine='Faculté des Sciences Marines'
+        )
+        self.assertNotIn("Tiana", self.ask(self.etab_sciences, "Retrouve la demande de l'étudiant Tiana"))
+
+    def test_role_obsolete_ne_voit_rien(self):
+        ancien = Utilisateur.objects.create_user(username='etu_old', password='x')
+        Utilisateur.objects.filter(pk=ancien.pk).update(role='ETUDIANT')
+        ancien.refresh_from_db()
+        reply = self.ask(ancien, f"Recherche le dossier #{self.dossier_medecine.id}")
+        self.assertNotIn("Vola", reply)

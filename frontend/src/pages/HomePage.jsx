@@ -16,7 +16,8 @@ import {
   Fingerprint,
   Layers,
   Shield,
-  UserCheck
+  UserCheck,
+  Truck
 } from 'lucide-react';
 
 const HomePage = () => {
@@ -35,30 +36,37 @@ const HomePage = () => {
 
   const administrativeRoles = [
     {
-      title: 'Chef de Service',
-      badge: 'Guichet & Dépôt',
-      desc: 'Enregistrement physique des dossiers déposés au guichet, contrôle initial de conformité et validation de recevabilité.',
-      color: '#38bdf8',
-      icon: CheckCircle2
-    },
-    {
       title: 'Scolarité Centrale',
-      badge: 'Contrôle Académique',
-      desc: 'Confrontation rigoureuse avec les procès-verbaux de délibération des jurys et validation de l\'aptitude au grade.',
-      color: '#0ea5e9',
+      badge: 'Contrôle Académique & PV',
+      desc: 'Réception et vérification initiale de conformité, confrontation rigoureuse avec les procès-verbaux de délibération des jurys et validation d\'aptitude.',
+      color: '#38bdf8',
       icon: Building2
     },
     {
-      title: 'Service Impression',
-      badge: 'Édition Fiduciaire',
-      desc: 'Tirage sur papier sécurisé certifié, incrustation du filigrane et apposition des éléments graphiques infalsifiables.',
+      title: 'Chef de Service',
+      badge: 'Instruction & Affectation',
+      desc: 'Prise en charge administrative des dossiers validés, contrôle d\'éligibilité, affectation aux concepteurs et délivrance finale au guichet.',
+      color: '#0ea5e9',
+      icon: CheckCircle2
+    },
+    {
+      title: 'Le Concepteur',
+      badge: 'Conception & Tirage Sécurisé',
+      desc: 'Préparation et calibrage de la maquette officielle du diplôme, vérification des mentions et tirage fiduciaire infalsifiable.',
       color: '#06b6d4',
       icon: FileText
     },
     {
-      title: 'Présidence',
-      badge: 'Signature & Sceau',
-      desc: 'Signature solennelle, scellement officiel par le grand sceau de l\'Université et publication du registre des diplômes prêts.',
+      title: 'Les Agents',
+      badge: 'Acheminement & Navette',
+      desc: 'Acheminement physique sécurisé par navette administrative sous décharge vers le Cabinet de la Présidence puis retour.',
+      color: '#6366f1',
+      icon: Truck
+    },
+    {
+      title: 'Le Président',
+      badge: 'Signature & Grand Sceau',
+      desc: 'Signature rectorale solennelle, apposition du grand sceau officiel de l\'Université et homologation finale pour remise au diplômé.',
       color: '#10b981',
       icon: Award
     }
@@ -279,8 +287,8 @@ const HomePage = () => {
           }}
         >
           Plateforme intranet réservée au personnel administratif de l'Université de Toliara :
-          instruction des dossiers de guichet, validation académique des procès-verbaux,
-          tirage fiduciaire et signature officielle à la Présidence.
+          contrôle académique des procès-verbaux à la Scolarité Centrale, instruction et affectation
+          par le Chef de Service, tirage fiduciaire et signature officielle à la Présidence.
         </p>
 
         {/* Hero Action Buttons */}
@@ -320,7 +328,7 @@ const HomePage = () => {
             }}
           >
             <LogIn size={18} />
-            <span>Accéder à l'Intranet Administratif</span>
+            <span>Accéder à mon espace</span>
             <ArrowRight size={16} />
           </Link>
 
@@ -363,7 +371,7 @@ const HomePage = () => {
           id="roles"
           className="dark-glass-card animate-fade-in"
           style={{
-            maxWidth: '920px',
+            maxWidth: '1080px',
             margin: '0 auto 4rem',
             padding: '2.25rem 2.5rem',
             textAlign: 'left',
@@ -377,7 +385,7 @@ const HomePage = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 10px #10b981' }} />
               <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#f8fafc', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Écosystème du Personnel Administratif
+                Les 5 Principaux Acteurs de la Plateforme
               </span>
             </div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: '#38bdf8', backgroundColor: 'rgba(14, 165, 233, 0.1)', padding: '0.25rem 0.75rem', borderRadius: '9999px', border: '1px solid rgba(56, 189, 248, 0.2)' }}>
@@ -386,12 +394,12 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* 4 Staff Roles Grid */}
+          {/* 5 Staff Roles Grid */}
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '1.25rem',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '1.15rem',
               marginBottom: '1.75rem'
             }}
           >
@@ -527,23 +535,23 @@ const HomePage = () => {
               <span>Workflow Sécurisé</span>
             </div>
             <h2 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.5rem)', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
-              Le Circuit Officiel d'Instruction des Diplômes
+              Le Circuit Officiel des 5 Acteurs
             </h2>
-            <p style={{ color: '#94a3b8', fontSize: '1.05rem', maxWidth: '650px', margin: '0.75rem auto 0' }}>
-              Chaque titre universitaire franchit 4 étapes rigoureuses et inviolables
-              garantissant sa conformité et son authenticité.
+            <p style={{ color: '#94a3b8', fontSize: '1.05rem', maxWidth: '680px', margin: '0.75rem auto 0' }}>
+              Chaque titre universitaire franchit 5 étapes rigoureuses et inviolables
+              garantissant sa conformité, sa traçabilité et son authenticité.
             </p>
           </div>
 
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-              gap: '1.75rem'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+              gap: '1.5rem'
             }}
           >
             {/* Step 1 */}
-            <div className="dark-glass-card" style={{ padding: '2rem 1.5rem', position: 'relative' }}>
+            <div className="dark-glass-card" style={{ padding: '2rem 1.4rem', position: 'relative' }}>
               <div
                 style={{
                   position: 'absolute',
@@ -572,18 +580,18 @@ const HomePage = () => {
                   marginBottom: '1.25rem'
                 }}
               >
-                <CheckCircle2 size={24} />
+                <Building2 size={24} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem' }}>
-                1. Chef de Service
+                1. Scolarité Centrale
               </h3>
               <p style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.65 }}>
-                Enregistrement physique du dossier déposé au guichet, contrôle rigoureux des pièces justificatives et validation de recevabilité.
+                Vérification et validation initiale du dossier, confrontation rigoureuse avec les procès-verbaux de délibération des jurys et contrôle de conformité académique.
               </p>
             </div>
 
             {/* Step 2 */}
-            <div className="dark-glass-card" style={{ padding: '2rem 1.5rem', position: 'relative' }}>
+            <div className="dark-glass-card" style={{ padding: '2rem 1.4rem', position: 'relative' }}>
               <div
                 style={{
                   position: 'absolute',
@@ -591,7 +599,7 @@ const HomePage = () => {
                   right: '1.25rem',
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#38bdf8',
+                  color: '#0ea5e9',
                   backgroundColor: 'rgba(14, 165, 233, 0.12)',
                   padding: '0.2rem 0.6rem',
                   borderRadius: '9999px'
@@ -612,18 +620,18 @@ const HomePage = () => {
                   marginBottom: '1.25rem'
                 }}
               >
-                <Building2 size={24} />
+                <CheckCircle2 size={24} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem' }}>
-                2. Scolarité Centrale
+                2. Chef de Service
               </h3>
               <p style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.65 }}>
-                Confrontation avec les procès-verbaux de délibération des jurys et constitution du registre officiel d'aptitude.
+                Prise en charge administrative des dossiers validés par la scolarité, contrôle d'éligibilité, affectation aux concepteurs et validation du circuit.
               </p>
             </div>
 
             {/* Step 3 */}
-            <div className="dark-glass-card" style={{ padding: '2rem 1.5rem', position: 'relative' }}>
+            <div className="dark-glass-card" style={{ padding: '2rem 1.4rem', position: 'relative' }}>
               <div
                 style={{
                   position: 'absolute',
@@ -631,8 +639,8 @@ const HomePage = () => {
                   right: '1.25rem',
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  color: '#38bdf8',
-                  backgroundColor: 'rgba(14, 165, 233, 0.12)',
+                  color: '#06b6d4',
+                  backgroundColor: 'rgba(6, 182, 212, 0.12)',
                   padding: '0.2rem 0.6rem',
                   borderRadius: '9999px'
                 }}
@@ -655,15 +663,55 @@ const HomePage = () => {
                 <FileText size={24} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem' }}>
-                3. Service Impression
+                3. Le Concepteur
               </h3>
               <p style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.65 }}>
-                Édition sécurisée sur papier fiduciaire filigrané et incrustation du code cryptographique unique anti-copie.
+                Conception et calibrage de la maquette sécurisée du diplôme, contrôle minutieux des mentions officielles et tirage fiduciaire sur papier sécurisé.
               </p>
             </div>
 
             {/* Step 4 */}
-            <div className="dark-glass-card" style={{ padding: '2rem 1.5rem', position: 'relative' }}>
+            <div className="dark-glass-card" style={{ padding: '2rem 1.4rem', position: 'relative' }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '1.25rem',
+                  right: '1.25rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  color: '#6366f1',
+                  backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '9999px'
+                }}
+              >
+                ÉTAPE 04
+              </div>
+              <div
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '12px',
+                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                  color: '#6366f1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1.25rem'
+                }}
+              >
+                <Truck size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem' }}>
+                4. Les Agents
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.65 }}>
+                Acheminement physique et sécurisé par navette administrative sous décharge vers le Cabinet du Président pour signature, puis rapatriement.
+              </p>
+            </div>
+
+            {/* Step 5 */}
+            <div className="dark-glass-card" style={{ padding: '2rem 1.4rem', position: 'relative' }}>
               <div
                 style={{
                   position: 'absolute',
@@ -677,7 +725,7 @@ const HomePage = () => {
                   borderRadius: '9999px'
                 }}
               >
-                ÉTAPE 04
+                ÉTAPE 05
               </div>
               <div
                 style={{
@@ -695,10 +743,10 @@ const HomePage = () => {
                 <Award size={24} />
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.5rem' }}>
-                4. Présidence & Délivrance
+                5. Le Président
               </h3>
               <p style={{ fontSize: '0.875rem', color: '#94a3b8', lineHeight: 1.65 }}>
-                Signature solennelle, apposition du grand sceau de l'Université et mise à disposition immédiate au guichet.
+                Signature rectorale solennelle, apposition du grand sceau officiel de l'Université de Toliara et homologation finale pour remise au diplômé.
               </p>
             </div>
           </div>
@@ -743,16 +791,16 @@ const HomePage = () => {
 
           <div className="dark-glass-card" style={{ padding: '2rem 1rem' }}>
             <span style={{ fontSize: '2.75rem', fontWeight: 800, color: '#10b981', display: 'block', lineHeight: 1 }}>
-              {stats.disponibles || 1}
+              {stats.retour_scol || 0}
             </span>
             <span style={{ fontSize: '0.85rem', color: '#cbd5e1', marginTop: '0.5rem', display: 'block', fontWeight: 600 }}>
-              Diplômes Prêts au Retrait
+              Diplômes revenus au Chef de service
             </span>
           </div>
 
           <div className="dark-glass-card" style={{ padding: '2rem 1rem' }}>
             <span style={{ fontSize: '2.75rem', fontWeight: 800, color: '#f59e0b', display: 'block', lineHeight: 1 }}>
-              {(stats.total - stats.disponibles) || 4}
+              {Math.max(0, (stats.total || 0) - (stats.refusees || 0) - (stats.retour_scol || 0))}
             </span>
             <span style={{ fontSize: '0.85rem', color: '#cbd5e1', marginTop: '0.5rem', display: 'block', fontWeight: 600 }}>
               En Cours d'Instruction

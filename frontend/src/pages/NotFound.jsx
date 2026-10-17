@@ -2,10 +2,15 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FileQuestion, ArrowLeft } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
+import AdminLayout from '../components/AdminLayout';
+import { useAuth } from '../components/AuthContext';
+import { accueilParRole, ROLE_ADMIN } from '../services/espaces';
 
 const NotFound = () => {
+  const { user } = useAuth();
+  const Layout = user?.role === ROLE_ADMIN ? AdminLayout : AppLayout;
   return (
-    <AppLayout>
+    <Layout>
       <div
         style={{
           display: 'flex',
@@ -61,7 +66,7 @@ const NotFound = () => {
         </p>
 
         <Link
-          to="/dashboard"
+          to={accueilParRole(user?.role)}
           className="btn btn-primary"
           style={{
             padding: '0.85rem 1.75rem',
@@ -75,7 +80,7 @@ const NotFound = () => {
           <span>Retourner au Tableau de Bord</span>
         </Link>
       </div>
-    </AppLayout>
+    </Layout>
   );
 };
 

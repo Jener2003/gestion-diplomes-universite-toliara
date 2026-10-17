@@ -24,6 +24,7 @@ class DemandeDiplome(models.Model):
 
     etudiant = models.ForeignKey(Etudiant, on_delete=models.CASCADE, related_name='demandes')
     type_diplome = models.CharField(max_length=100, verbose_name=_('Type de diplôme'))
+    annee_universitaire = models.CharField(max_length=25, blank=True, null=True, verbose_name=_('Année universitaire d\'obtention'))
     date_demande = models.DateTimeField(auto_now_add=True, verbose_name=_('Date de demande'))
     statut = models.CharField(max_length=45, choices=Statut.choices, default=Statut.EN_ATTENTE_VERIFICATION, verbose_name=_('Statut'))
     
@@ -38,6 +39,8 @@ class DemandeDiplome(models.Model):
     has_releve_notes = models.BooleanField(default=True, verbose_name=_('Relevé de notes fourni'))
     has_certificat_scolarite = models.BooleanField(default=True, verbose_name=_('Certificat de scolarité fourni'))
     has_recu_bancaire = models.BooleanField(default=True, verbose_name=_('Reçu bancaire fourni'))
+
+    admission_etudiant = models.BooleanField(null=True, blank=True, default=None, verbose_name=_('Admission de l\'étudiant confirmée'))
 
     # Commentaires et motifs
     commentaire = models.TextField(blank=True, null=True, verbose_name=_('Commentaire'))
@@ -68,6 +71,9 @@ class DemandeDiplome(models.Model):
         blank=True,
         related_name='demandes_transmission',
         verbose_name=_('Agent de transmission')
+    )
+    date_transmission_chef = models.DateTimeField(
+        blank=True, null=True, verbose_name=_('Date de transmission au Chef de service')
     )
 
     # Dates de jalon du circuit

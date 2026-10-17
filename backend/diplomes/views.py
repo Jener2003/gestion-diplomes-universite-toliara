@@ -14,6 +14,9 @@ class DiplomeViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
         user = self.request.user
+        # Refus par défaut : administrateur, rôle inconnu ou obsolète
+        if user.role not in Utilisateur.ROLES_METIER:
+            return queryset.none()
         if user.role == Utilisateur.Role.SCOLARITE_ETABLISSEMENT and user.etablissement:
             queryset = queryset.filter(demande__etudiant__faculte__icontains=user.etablissement)
         return queryset
