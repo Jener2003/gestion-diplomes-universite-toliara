@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, UserCheck, UserX, LogIn, ShieldAlert, KeyRound, Mail, ScrollText, ArrowRight, RefreshCw } from 'lucide-react';
+import { Users, UserCheck, UserX, LogIn, ShieldAlert, Radio, KeyRound, Mail, ScrollText, ArrowRight, RefreshCw } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
 import { adminAPI } from '../../services/api';
 import {
@@ -43,20 +43,25 @@ const AdminDashboard = () => {
   const [erreur, setErreur] = useState('');
   const [chargement, setChargement] = useState(true);
 
-  const charger = () => {
-    setChargement(true);
-    adminAPI.getStats()
+  const charger = (auto = false) => {
+    if (!auto) setChargement(true);
+    adminAPI.getStats(auto)
       .then((res) => { setStats(res.data); setErreur(''); })
-      .catch((err) => setErreur(messageErreur(err, 'Impossible de charger les indicateurs.')))
-      .finally(() => setChargement(false));
+      .catch((err) => { if (!auto) setErreur(messageErreur(err, 'Impossible de charger les indicateurs.')); })
+      .finally(() => { if (!auto) setChargement(false); });
   };
 
-  useEffect(charger, []);
+  useEffect(() => {
+    charger();
+    // Nombre d'agents en ligne tenu à jour tant que la page est affichée
+    const minuterie = setInterval(() => { if (document.visibilityState === 'visible') charger(true); }, 30000);
+    return () => clearInterval(minuterie);
+  }, []);
 
   return (
     <AdminLayout>
       <EnTetePage titre="Tableau de bord" sousTitre="Indicateurs calculés en temps réel sur les comptes et le journal de la plateforme.">
-        <button type="button" className="adm-btn adm-btn-contour" onClick={charger} disabled={chargement}>
+        <button type="button" className="adm-btn adm-btn-contour" onClick={() => charger()} disabled={chargement}>
           <RefreshCw size={16} /> Actualiser
         </button>
       </EnTetePage>
@@ -69,6 +74,7 @@ const AdminDashboard = () => {
           <div className="adm-grille adm-grille-kpi">
             <Kpi icone={Users} libelle="Comptes" valeur={stats.total} note="tous rôles confondus" />
             <Kpi icone={UserCheck} libelle="Actifs" valeur={stats.actifs} note="peuvent se connecter" />
+            <Kpi icone={Radio} libelle="En ligne" valeur={stats.en_ligne} note="actifs ces 5 dernières minutes" />
             <Kpi icone={UserX} libelle="Inactifs" valeur={stats.inactifs} note="désactivés" />
             <Kpi icone={LogIn} libelle="Connexions 24 h" valeur={stats.connexions_24h} note="authentifications réussies" />
             <Kpi icone={ShieldAlert} libelle="Échecs 24 h" valeur={stats.echecs_connexion_24h} note="mot de passe ou code refusé" />

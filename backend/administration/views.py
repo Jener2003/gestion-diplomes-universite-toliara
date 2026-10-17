@@ -19,6 +19,7 @@ from demandes.views import ROLES_CREATION_DEMANDE, TRANSITIONS_AUTORISEES
 from utilisateurs.models import OTPCode, Utilisateur
 from utilisateurs.langue import EnFrancais
 from utilisateurs.permissions import EstAdministrateurSysteme
+from utilisateurs.presence import filtre_en_ligne
 from .models import AdresseNotificationEquipe, JournalActivite
 from .serializers import AdminUtilisateurSerializer, AdresseEquipeSerializer, JournalActiviteSerializer
 from .services import envoyer_email_equipe, envoyer_lien_mot_de_passe, journaliser
@@ -275,6 +276,7 @@ class StatistiquesAdminView(EnFrancais, APIView):
             'total': total,
             'actifs': actifs,
             'inactifs': total - actifs,
+            'en_ligne': comptes.filter(filtre_en_ligne()).count(),
             'par_role': par_role,
             'connexions_24h': JournalActivite.objects.filter(
                 date__gte=depuis, operation=Operation.CONNEXION_REUSSIE).count(),

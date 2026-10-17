@@ -49,6 +49,9 @@ class Utilisateur(AbstractUser):
         null=True,
         verbose_name=_('Établissement / Faculté rattaché')
     )
+    # Statut de présence affiché à l'administrateur (voir utilisateurs/presence.py)
+    derniere_activite = models.DateTimeField(null=True, blank=True, verbose_name=_('Dernière activité'))
+    derniere_deconnexion = models.DateTimeField(null=True, blank=True, verbose_name=_('Dernière déconnexion'))
 
     @property
     def is_staff_role(self):

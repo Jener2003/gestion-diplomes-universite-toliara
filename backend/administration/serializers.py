@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from utilisateurs.models import Utilisateur
+from utilisateurs.presence import statut_presence
 
 from .models import AdresseNotificationEquipe, JournalActivite
 
@@ -28,6 +29,7 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
     role_display = serializers.SerializerMethodField()
     role_obsolete = serializers.SerializerMethodField()
     mot_de_passe_defini = serializers.SerializerMethodField()
+    presence = serializers.SerializerMethodField()
     est_superutilisateur = serializers.BooleanField(source='is_superuser', read_only=True)
     email = serializers.EmailField(max_length=254)
     first_name = serializers.CharField(max_length=150)
@@ -38,9 +40,9 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'username', 'email', 'first_name', 'last_name', 'role', 'role_display',
             'role_obsolete', 'is_active', 'mot_de_passe_defini', 'est_superutilisateur',
-            'date_joined', 'last_login',
+            'date_joined', 'last_login', 'derniere_activite', 'derniere_deconnexion', 'presence',
         )
-        read_only_fields = ('id', 'is_active', 'date_joined', 'last_login')
+        read_only_fields = ('id', 'is_active', 'date_joined', 'last_login', 'derniere_activite', 'derniere_deconnexion')
 
     def get_role_display(self, user) -> str:
         libelles = dict(Utilisateur.Role.choices)
@@ -51,6 +53,9 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
 
     def get_mot_de_passe_defini(self, user) -> bool:
         return user.has_usable_password()
+
+    def get_presence(self, user) -> str:
+        return statut_presence(user)
 
     def validate_username(self, value):
         value = value.strip()

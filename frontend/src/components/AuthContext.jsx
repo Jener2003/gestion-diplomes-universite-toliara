@@ -85,6 +85,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    const refresh = sessionStorage.getItem('refresh_token');
+    // Sans attendre la réponse : la déconnexion locale ne dépend pas du serveur
+    if (refresh) authAPI.logout(refresh).catch(() => {});
     sessionStorage.clear();
     setUser(null);
   };

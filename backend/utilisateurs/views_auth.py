@@ -13,10 +13,13 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
+from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.db import transaction
 from django.conf import settings
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from administration.models import JournalActivite
@@ -209,6 +212,7 @@ class LoginStep2View(APIView):
                         details={'role': user.role})
             # Date de dernière connexion (affichée à l'administrateur)
             update_last_login(None, user)
+            Utilisateur.objects.filter(pk=user.pk).update(derniere_activite=timezone.now())
 
         # Générer les tokens JWT
         refresh = RefreshToken.for_user(user)
@@ -272,3 +276,31 @@ class DefinirMotDePasseView(EnFrancais, APIView):
         journaliser(Operation.MOT_DE_PASSE_DEFINI, cible=user, request=request)
         return Response({'detail': 'Votre mot de passe a été enregistré. Vous pouvez vous connecter.'},
                         status=status.HTTP_200_OK)
+
+
+class DeconnexionView(APIView):
+    """
+    Déconnexion : l'agent passe immédiatement « hors ligne » pour l'administrateur.
+    Identifié par son jeton de renouvellement, valable plus longtemps que le jeton
+    d'accès : la déconnexion est enregistrée même si ce dernier a expiré.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        tags=['Authentification'],
+        summary="Déconnexion (statut « hors ligne » immédiat)",
+        request=inline_serializer('Deconnexion', {'refresh': serializers.CharField()}),
+        responses={204: None},
+    )
+    def post(self, request):
+        try:
+            jeton = RefreshToken(str(request.data.get('refresh', '')))
+        except TokenError:
+            # Session déjà expirée : rien à enregistrer, le client se déconnecte quand même
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        user = Utilisateur.objects.filter(pk=jeton.get(jwt_settings.USER_ID_CLAIM)).first()
+        if user is not None:
+            Utilisateur.objects.filter(pk=user.pk).update(derniere_deconnexion=timezone.now())
+            journaliser(Operation.DECONNEXION, cible=user, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)

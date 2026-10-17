@@ -259,3 +259,105 @@ class CommandeCreerAgentTests(TestCase):
         with self.assertRaises(CommandError):
             self.appeler(username='admin2', role='ADMIN_SYSTEME', password='123456')
         self.assertFalse(Utilisateur.objects.filter(username='admin2').exists())
+
+
+class StatutPresenceTests(TestCase):
+    """Statut en ligne / absent / hors ligne affiché à l'administrateur."""
+
+    def setUp(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+        R = Utilisateur.Role
+        self.admin = Utilisateur.objects.create_user(username='adm', password='x', email='adm@u.mg', role=R.ADMIN_SYSTEME)
+        self.agent = Utilisateur.objects.create_user(username='chef', password='x', email='chef@u.mg', role=R.CHEF_SERVICE)
+        self.jetons = RefreshToken.for_user(self.agent)
+        self.client_agent = APIClient()
+        self.client_agent.credentials(HTTP_AUTHORIZATION=f'Bearer {self.jetons.access_token}')
+        self.client_admin = APIClient()
+        self.client_admin.force_authenticate(self.admin)
+
+    def presence(self, user=None):
+        user = user or self.agent
+        r = self.client_admin.get(f'/api/administration/utilisateurs/{user.pk}/')
+        return r.data['presence']
+
+    def vieillir(self, minutes):
+        Utilisateur.objects.filter(pk=self.agent.pk).update(
+            derniere_activite=timezone.now() - timezone.timedelta(minutes=minutes))
+
+    def test_jamais_connecte_hors_ligne(self):
+        self.assertEqual(self.presence(), 'hors_ligne')
+
+    def test_requete_de_l_agent_le_met_en_ligne(self):
+        self.client_agent.get('/api/utilisateurs/me/')
+        self.agent.refresh_from_db()
+        self.assertIsNotNone(self.agent.derniere_activite)
+        self.assertEqual(self.presence(), 'en_ligne')
+
+    def test_rafraichissement_automatique_ne_compte_pas(self):
+        self.client_agent.get('/api/notifications/', HTTP_X_REQUETE_AUTO='1')
+        self.agent.refresh_from_db()
+        self.assertIsNone(self.agent.derniere_activite)
+        self.assertEqual(self.presence(), 'hors_ligne')
+
+    def test_une_ecriture_par_minute_au_plus(self):
+        ancienne = timezone.now() - timezone.timedelta(seconds=20)
+        Utilisateur.objects.filter(pk=self.agent.pk).update(derniere_activite=ancienne)
+        self.client_agent.get('/api/utilisateurs/me/')
+        self.agent.refresh_from_db()
+        self.assertEqual(self.agent.derniere_activite, ancienne)
+
+    def test_absent_puis_hors_ligne_selon_l_inactivite(self):
+        self.vieillir(10)
+        self.assertEqual(self.presence(), 'absent')
+        self.vieillir(45)
+        self.assertEqual(self.presence(), 'hors_ligne')
+
+    def test_deconnexion_immediatement_hors_ligne(self):
+        self.client_agent.get('/api/utilisateurs/me/')
+        r = APIClient().post('/api/auth/logout/', {'refresh': str(self.jetons)}, format='json')
+        self.assertEqual(r.status_code, 204)
+        self.assertEqual(self.presence(), 'hors_ligne')
+        from administration.models import JournalActivite
+        entree = JournalActivite.objects.latest('id')
+        self.assertEqual((entree.operation, entree.cible), (JournalActivite.Operation.DECONNEXION, self.agent))
+
+    def test_nouvelle_activite_apres_deconnexion(self):
+        Utilisateur.objects.filter(pk=self.agent.pk).update(
+            derniere_activite=timezone.now() - timezone.timedelta(minutes=3),
+            derniere_deconnexion=timezone.now() - timezone.timedelta(minutes=2))
+        self.assertEqual(self.presence(), 'hors_ligne')
+        self.client_agent.get('/api/utilisateurs/me/')
+        self.assertEqual(self.presence(), 'en_ligne')
+
+    def test_activite_juste_apres_deconnexion_comptee(self):
+        # Moins d'une minute entre l'activité, la déconnexion et la nouvelle requête
+        Utilisateur.objects.filter(pk=self.agent.pk).update(
+            derniere_activite=timezone.now() - timezone.timedelta(seconds=20),
+            derniere_deconnexion=timezone.now() - timezone.timedelta(seconds=10))
+        self.client_agent.get('/api/utilisateurs/me/')
+        self.assertEqual(self.presence(), 'en_ligne')
+
+    def test_deconnexion_jeton_invalide_sans_erreur(self):
+        r = APIClient().post('/api/auth/logout/', {'refresh': 'invalide'}, format='json')
+        self.assertEqual(r.status_code, 204)
+
+    def test_compte_desactive_hors_ligne(self):
+        self.client_agent.get('/api/utilisateurs/me/')
+        Utilisateur.objects.filter(pk=self.agent.pk).update(is_active=False)
+        self.assertEqual(self.presence(), 'hors_ligne')
+
+    def test_compteur_en_ligne_du_tableau_de_bord(self):
+        self.client_agent.get('/api/utilisateurs/me/')
+        autre = Utilisateur.objects.create_user(username='imp', password='x', role=Utilisateur.Role.IMPRIMEUR)
+        Utilisateur.objects.filter(pk=autre.pk).update(derniere_activite=timezone.now() - timezone.timedelta(minutes=10))
+        r = self.client_admin.get('/api/administration/stats/')
+        self.assertEqual(r.data['en_ligne'], 1)
+
+    def test_connexion_otp_met_en_ligne(self):
+        self.agent.set_password('Mot-de-passe#26')
+        self.agent.save()
+        client = APIClient()
+        client.post('/api/auth/login/', {'username': 'chef', 'password': 'Mot-de-passe#26'})
+        code = OTPCode.objects.filter(utilisateur=self.agent, is_used=False).latest('created_at').code
+        self.assertEqual(client.post('/api/auth/verify-otp/', {'username': 'chef', 'code': code}).status_code, 200)
+        self.assertEqual(self.presence(), 'en_ligne')

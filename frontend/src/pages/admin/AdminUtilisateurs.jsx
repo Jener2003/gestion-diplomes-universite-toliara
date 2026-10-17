@@ -6,7 +6,7 @@ import { adminAPI } from '../../services/api';
 import {
   Bandeau, Chargement, Confirmation, EnTetePage, Modale,
 } from '../../components/admin/AdminUI';
-import { formatDate, messageErreur } from '../../components/admin/format';
+import { PRESENCES, depuis, formatDate, messageErreur } from '../../components/admin/format';
 
 const VIDE = { username: '', first_name: '', last_name: '', email: '', role: '' };
 
@@ -113,16 +113,16 @@ const AdminUtilisateurs = () => {
 
   const libelleRole = useMemo(() => Object.fromEntries(roles.map((r) => [r.code, r.libelle])), [roles]);
 
-  const charger = () => {
-    setChargement(true);
+  const charger = (auto = false) => {
+    if (!auto) setChargement(true);
     const params = {};
     if (recherche.trim()) params.recherche = recherche.trim();
     if (filtreRole) params.role = filtreRole;
     if (filtreEtat) params.actif = filtreEtat;
-    adminAPI.getUtilisateurs(params)
+    adminAPI.getUtilisateurs(params, auto)
       .then((res) => { setComptes(res.data); setErreur(''); })
-      .catch((err) => setErreur(messageErreur(err, 'Impossible de charger les comptes.')))
-      .finally(() => setChargement(false));
+      .catch((err) => { if (!auto) setErreur(messageErreur(err, 'Impossible de charger les comptes.')); })
+      .finally(() => { if (!auto) setChargement(false); });
   };
 
   useEffect(() => {
@@ -131,7 +131,11 @@ const AdminUtilisateurs = () => {
 
   useEffect(() => {
     const minuterie = setTimeout(charger, 300);
-    return () => clearTimeout(minuterie);
+    // Statuts de présence tenus à jour toutes les 30 s, sans spinner (onglet visible uniquement)
+    const rafraichissement = setInterval(() => {
+      if (document.visibilityState === 'visible') charger(true);
+    }, 30000);
+    return () => { clearTimeout(minuterie); clearInterval(rafraichissement); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recherche, filtreRole, filtreEtat]);
 
@@ -272,7 +276,7 @@ const AdminUtilisateurs = () => {
         <div className="adm-table-conteneur">
           <table className="adm-table">
             <thead>
-              <tr><th>Utilisateur</th><th>Identifiant</th><th>Rôle</th><th>État</th><th>Dernière connexion</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
+              <tr><th>Utilisateur</th><th>Identifiant</th><th>Rôle</th><th>État</th><th>Présence</th><th style={{ textAlign: 'right' }}>Actions</th></tr>
             </thead>
             <tbody>
               {comptes.length === 0 && (
@@ -292,7 +296,16 @@ const AdminUtilisateurs = () => {
                       <span className={`adm-pastille ${c.is_active ? 'actif' : 'inactif'}`}>{c.is_active ? 'Actif' : 'Inactif'}</span>
                       {c.is_active && !c.mot_de_passe_defini && <span className="secondaire">Mot de passe à définir</span>}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatDate(c.last_login)}</td>
+                    <td title={`Dernière connexion : ${formatDate(c.last_login)}`}>
+                      <span className={`adm-presence ${c.presence}`}>{PRESENCES[c.presence]}</span>
+                      <span className="secondaire">
+                        {c.presence === 'en_ligne' ? `actif ${depuis(c.derniere_activite)}`
+                          : c.derniere_deconnexion && new Date(c.derniere_deconnexion) >= new Date(c.derniere_activite || 0)
+                            ? `déconnecté ${depuis(c.derniere_deconnexion)}`
+                          : c.derniere_activite ? `vu ${depuis(c.derniere_activite)}`
+                            : c.last_login ? `connecté ${depuis(c.last_login)}` : 'jamais connecté'}
+                      </span>
+                    </td>
                     <td>
                       <div className="adm-actions">
                         <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => setFormulaire({ compte: c })}

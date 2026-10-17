@@ -91,7 +91,7 @@
 .adm-grille { display: grid; gap: 1rem; }
 /* Sans min-width: 0, un tableau large élargit sa colonne de grille et la page déborde sur mobile */
 .adm-grille > * { min-width: 0; }
-.adm-grille-kpi { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin-bottom: 1rem; }
+.adm-grille-kpi { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 1rem; }
 .adm-grille-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
 
 .adm-kpi { display: flex; flex-direction: column; gap: 0.2rem; }
@@ -188,6 +188,14 @@
 .adm-pastille.role { background: #e8f1fa; color: #154f82; }
 .adm-pastille.obsolete { background: var(--adm-attention-fond); color: var(--adm-attention); }
 .adm-pastille.attente { background: var(--adm-info-fond); color: var(--adm-info); }
+/* Statut de présence : point de couleur + libellé (jamais la couleur seule) */
+.adm-presence { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 700; white-space: nowrap; color: var(--adm-texte); }
+.adm-presence::before { content: ''; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: #94a3b8; }
+.adm-presence.en_ligne { color: var(--adm-ok); }
+.adm-presence.en_ligne::before { background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18); }
+.adm-presence.absent { color: var(--adm-attention); }
+.adm-presence.absent::before { background: #f59e0b; }
+.adm-presence.hors_ligne { color: var(--adm-muet); }
 .adm-pastille.cat-ADMINISTRATION { background: #e6f4f7; color: var(--adm-petrole); }
 .adm-pastille.cat-SECURITE { background: #fdecec; color: #9f1d1d; }
 .adm-pastille.cat-TECHNIQUE { background: #f1f5f9; color: #334155; }

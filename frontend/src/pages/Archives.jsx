@@ -37,7 +37,7 @@ const Archives = () => {
 
   useEffect(() => {
     let active = true;
-    const refresh = () => demandesAPI.getArchives()
+    const refresh = (auto = false) => demandesAPI.getArchives({}, auto)
       .then(({ data }) => {
         if (!active) return;
         const rows = Array.isArray(data) ? data : data.results || [];
@@ -47,9 +47,9 @@ const Archives = () => {
       })
       .catch(() => { if (active) setError('Impossible de charger les archives. Réessayez dans quelques instants.'); })
       .finally(() => { if (active) setLoading(false); });
-    const refreshWhenVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    const refreshWhenVisible = () => { if (document.visibilityState === 'visible') refresh(true); };
     refresh();
-    const interval = window.setInterval(refresh, 30000);
+    const interval = window.setInterval(() => refresh(true), 30000);
     window.addEventListener('focus', refreshWhenVisible);
     return () => {
       active = false;

@@ -31,6 +31,7 @@ class JournalActivite(models.Model):
         NOTIFICATION_EMAIL_ECHEC = 'NOTIFICATION_EMAIL_ECHEC', _('Échec d\'envoi d\'une notification par e-mail')
         # Sécurité
         CONNEXION_REUSSIE = 'CONNEXION_REUSSIE', _('Connexion réussie')
+        DECONNEXION = 'DECONNEXION', _('Déconnexion')
         ECHEC_MOT_DE_PASSE = 'ECHEC_MOT_DE_PASSE', _('Échec de connexion (identifiants)')
         CONNEXION_COMPTE_DESACTIVE = 'CONNEXION_COMPTE_DESACTIVE', _('Tentative sur un compte désactivé')
         ECHEC_OTP = 'ECHEC_OTP', _('Code de vérification refusé')

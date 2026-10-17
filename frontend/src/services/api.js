@@ -13,6 +13,9 @@ const API = axios.create({
   baseURL: BASE_URL,
 });
 
+// Rafraîchissements périodiques : non comptés comme activité de l'agent (statut de présence)
+const AUTO = { 'X-Requete-Auto': '1' };
+
 // Attach JWT token to requests if available
 API.interceptors.request.use((config) => {
   const token = sessionStorage.getItem('access_token');
@@ -58,13 +61,15 @@ export const authAPI = {
   // Lien personnel reçu par e-mail : vérification (sans mot de passe) puis définition
   definirMotDePasse: (payload) => API.post('auth/definir-mot-de-passe/', payload),
   getMe: () => API.get('utilisateurs/me/'),
+  // Déconnexion côté serveur (statut « hors ligne » immédiat), par le jeton de renouvellement
+  logout: (refresh) => API.post('auth/logout/', { refresh }),
   getImprimeurs: () => API.get('utilisateurs/imprimeurs/'),
   getAgentsTransmission: () => API.get('utilisateurs/agents_transmission/'),
 };
 
 export const demandesAPI = {
   getDemandes: (params = {}) => API.get('demandes/', { params }),
-  getArchives: (params = {}) => API.get('demandes/archives/', { params }),
+  getArchives: (params = {}, auto = false) => API.get('demandes/archives/', { params, headers: auto ? AUTO : {} }),
   getDemandeById: (id) => API.get(`demandes/${id}/`),
   creerDemande: (formData) => API.post('demandes/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   passerEtape: (id, payload) => API.post(`demandes/${id}/passer_etape/`, payload),
@@ -84,15 +89,15 @@ export const diplomesAPI = {
 };
 
 export const notificationsAPI = {
-  getNotifications: () => API.get('notifications/'),
+  getNotifications: () => API.get('notifications/', { headers: AUTO }),
   marquerLu: (id) => API.post(`notifications/${id}/marquer_lu/`),
   marquerTousLus: () => API.post('notifications/marquer_tous_lus/'),
 };
 
 // Espace Administrateur système (toutes ces routes sont refusées côté serveur aux autres rôles)
 export const adminAPI = {
-  getStats: () => API.get('administration/stats/'),
-  getUtilisateurs: (params = {}) => API.get('administration/utilisateurs/', { params }),
+  getStats: (auto = false) => API.get('administration/stats/', { headers: auto ? AUTO : {} }),
+  getUtilisateurs: (params = {}, auto = false) => API.get('administration/utilisateurs/', { params, headers: auto ? AUTO : {} }),
   creerUtilisateur: (data) => API.post('administration/utilisateurs/', data),
   modifierUtilisateur: (id, data) => API.patch(`administration/utilisateurs/${id}/`, data),
   activerUtilisateur: (id) => API.post(`administration/utilisateurs/${id}/activer/`),

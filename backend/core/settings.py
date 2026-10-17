@@ -202,7 +202,8 @@ AUTH_USER_MODEL = 'utilisateurs.Utilisateur'
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # JWT + enregistrement de l'activité (statut de présence des agents)
+        'utilisateurs.authentication.JWTAuthentificationAvecActivite',
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
@@ -223,6 +224,9 @@ CORS_ALLOWED_ORIGINS = [
         'http://localhost:5173,http://127.0.0.1:5173'
     ).split(',') if o
 ]
+# En-tête des rafraîchissements automatiques du frontend (non comptés comme activité)
+from corsheaders.defaults import default_headers  # noqa: E402
+CORS_ALLOW_HEADERS = (*default_headers, 'x-requete-auto')
 
 # ─── Email Configuration (2FA OTP) ──────────────────────────────────────────
 # In development: EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
