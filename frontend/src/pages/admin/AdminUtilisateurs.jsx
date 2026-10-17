@@ -295,18 +295,22 @@ const AdminUtilisateurs = () => {
                     <td style={{ whiteSpace: 'nowrap' }}>{formatDate(c.last_login)}</td>
                     <td>
                       <div className="adm-actions">
-                        <button type="button" className="adm-btn adm-btn-contour adm-btn-petit" onClick={() => setFormulaire({ compte: c })} title="Modifier">
-                          <Pencil size={14} /> Modifier
+                        <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => setFormulaire({ compte: c })}
+                                title="Modifier" aria-label={`Modifier ${c.username}`}>
+                          <Pencil size={15} />
                         </button>
                         {!soiMeme && (
                           <>
-                            <button type="button" className="adm-btn adm-btn-contour adm-btn-petit" onClick={() => basculerActivation(c)}>
-                              {c.is_active ? <><UserX size={14} /> Désactiver</> : <><UserCheck size={14} /> Activer</>}
+                            <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => basculerActivation(c)}
+                                    title={c.is_active ? 'Désactiver' : 'Activer'}
+                                    aria-label={`${c.is_active ? 'Désactiver' : 'Activer'} ${c.username}`}>
+                              {c.is_active ? <UserX size={15} /> : <UserCheck size={15} />}
                             </button>
                             {c.is_active && (
-                              <button type="button" className="adm-btn adm-btn-contour adm-btn-petit" onClick={() => reinitialiser(c)} disabled={!c.email}
-                                      title={c.email ? "Envoyer un lien de nouveau mot de passe" : "Renseignez d'abord une adresse e-mail"}>
-                                <KeyRound size={14} /> Réinitialiser
+                              <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => reinitialiser(c)} disabled={!c.email}
+                                      title={c.email ? "Réinitialiser l'accès (envoie un lien de nouveau mot de passe)" : "Renseignez d'abord une adresse e-mail"}
+                                      aria-label={`Réinitialiser l'accès de ${c.username}`}>
+                                <KeyRound size={15} />
                               </button>
                             )}
                           </>

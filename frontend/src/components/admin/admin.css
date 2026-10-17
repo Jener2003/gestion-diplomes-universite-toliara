@@ -139,6 +139,7 @@
 .adm-btn-danger { background: #dc2626; color: #fff; }
 .adm-btn-danger:hover:not(:disabled) { background: #b91c1c; }
 .adm-btn-petit { padding: 0.4rem 0.7rem; font-size: 0.78rem; border-radius: 8px; }
+.adm-btn-icone { padding: 0.45rem; border-radius: 8px; }
 .adm-lien { color: var(--adm-bleu); font-weight: 600; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem; }
 .adm-lien:hover { text-decoration: underline; }
 
