@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 import os
+from importlib.util import find_spec
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -57,7 +58,6 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'corsheaders',
-    'drf_spectacular',
     
     # Local apps
     'utilisateurs',
@@ -205,8 +205,14 @@ REST_FRAMEWORK = {
         # JWT + enregistrement de l'activité (statut de présence des agents)
         'utilisateurs.authentication.JWTAuthentificationAvecActivite',
     ),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Limite les demandes d'inscription (chacune envoie un e-mail à la boîte de l'équipe)
+    'DEFAULT_THROTTLE_RATES': {'inscription': '20/hour'},
 }
+
+# Documentation Swagger facultative : activée seulement si drf-spectacular est installé
+if find_spec('drf_spectacular') is not None:
+    INSTALLED_APPS.append('drf_spectacular')
+    REST_FRAMEWORK['DEFAULT_SCHEMA_CLASS'] = 'drf_spectacular.openapi.AutoSchema'
 
 # Documentation OpenAPI / Swagger (exposée uniquement en DEBUG, voir core/urls.py)
 SPECTACULAR_SETTINGS = {

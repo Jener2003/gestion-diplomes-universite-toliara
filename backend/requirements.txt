@@ -4,5 +4,7 @@ djangorestframework-simplejwt>=5.3,<5.4
 django-cors-headers>=4.4,<4.5
 Pillow>=11.0
 python-dotenv>=1.0,<2.0
-mysqlclient>=2.2.0
+# Pilote MySQL en pur Python : s'installe partout (aucune compilation), voir core/settings.py
+PyMySQL>=1.1
+# Facultatif : documentation Swagger /api/docs/ (l'application fonctionne sans)
 drf-spectacular>=0.28,<0.29

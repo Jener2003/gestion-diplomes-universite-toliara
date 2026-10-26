@@ -141,10 +141,23 @@ class CoherenceCircuitTests(TestCase):
     def test_affectation_imprimeur_invalide_rejetee(self):
         from django.utils import timezone
         d = self._demande(date_transmission_chef=timezone.now())
+        self.assertEqual(self._action(self.chef, d, 'PRENDRE_EN_CHARGE').status_code, 200)
         r = self._action(self.chef, d, 'AFFECTER_IMPRIMEUR', imprimeur_id=self.scolarite.id)
         self.assertEqual(r.status_code, 400)
         d.refresh_from_db()
+        self.assertEqual(d.statut, DemandeDiplome.Statut.EN_TRAITEMENT)
+
+    def test_prise_en_charge_obligatoire_avant_imprimeur(self):
+        from django.utils import timezone
+        d = self._demande(date_transmission_chef=timezone.now())
+        r = self._action(self.chef, d, 'AFFECTER_IMPRIMEUR', imprimeur_id=self.imp1.id)
+        self.assertEqual(r.status_code, 409)  # étape non autorisée depuis « Validée »
+        d.refresh_from_db()
         self.assertEqual(d.statut, DemandeDiplome.Statut.VALIDEE)
+        self.assertEqual(self._action(self.chef, d, 'PRENDRE_EN_CHARGE').status_code, 200)
+        self.assertEqual(self._action(self.chef, d, 'AFFECTER_IMPRIMEUR', imprimeur_id=self.imp1.id).status_code, 200)
+        d.refresh_from_db()
+        self.assertEqual(d.statut, DemandeDiplome.Statut.EN_ATTENTE_IMPRESSION)
 
     def test_historique_limite_aux_dossiers_visibles(self):
         d = self._demande()

@@ -30,8 +30,10 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
     role_obsolete = serializers.SerializerMethodField()
     mot_de_passe_defini = serializers.SerializerMethodField()
     presence = serializers.SerializerMethodField()
+    adresse_codes = serializers.SerializerMethodField()
     est_superutilisateur = serializers.BooleanField(source='is_superuser', read_only=True)
-    email = serializers.EmailField(max_length=254)
+    # Facultative : les codes partent à l'adresse commune de l'espace quand elle existe
+    email = serializers.EmailField(max_length=254, required=False, allow_blank=True)
     first_name = serializers.CharField(max_length=150)
     last_name = serializers.CharField(max_length=150)
 
@@ -41,8 +43,10 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name', 'role', 'role_display',
             'role_obsolete', 'is_active', 'mot_de_passe_defini', 'est_superutilisateur',
             'date_joined', 'last_login', 'derniere_activite', 'derniere_deconnexion', 'presence',
+            'inscription', 'adresse_codes',
         )
-        read_only_fields = ('id', 'is_active', 'date_joined', 'last_login', 'derniere_activite', 'derniere_deconnexion')
+        read_only_fields = ('id', 'is_active', 'date_joined', 'last_login', 'derniere_activite',
+                            'derniere_deconnexion', 'inscription')
 
     def get_role_display(self, user) -> str:
         libelles = dict(Utilisateur.Role.choices)
@@ -57,6 +61,10 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
     def get_presence(self, user) -> str:
         return statut_presence(user)
 
+    def get_adresse_codes(self, user) -> str:
+        from .services import adresse_codes
+        return adresse_codes(user)
+
     def validate_username(self, value):
         value = value.strip()
         if self.instance is not None:
@@ -69,6 +77,8 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         value = value.strip().lower()
+        if not value:
+            return ''
         autres = Utilisateur.objects.filter(email__iexact=value)
         if self.instance is not None:
             autres = autres.exclude(pk=self.instance.pk)
@@ -103,6 +113,14 @@ class AdminUtilisateurSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'role': "Vous ne pouvez pas modifier votre propre rôle."})
         if self.instance is None and 'role' not in attrs:
             raise serializers.ValidationError({'role': "Le rôle est obligatoire."})
+        # Il faut une adresse pour recevoir les codes : celle de l'espace, ou une adresse personnelle
+        from .services import adresse_espace
+        email = attrs.get('email', self.instance.email if self.instance else '')
+        role = attrs.get('role', self.instance.role if self.instance else None)
+        if not email and not adresse_espace(role):
+            raise serializers.ValidationError({'email': (
+                "L'adresse commune de cet espace n'est pas configurée : indiquez une adresse personnelle, "
+                "ou configurez d'abord l'adresse de l'espace (page Adresses des équipes).")})
         return attrs
 
 

@@ -11,11 +11,7 @@ import {
   EyeOff,
   ArrowLeft,
   ArrowRight,
-  UserCheck,
-  Building2,
-  Printer,
-  Truck,
-  Landmark,
+  UserPlus,
   ShieldCheck,
   RefreshCw,
   KeyRound,
@@ -99,21 +95,6 @@ const Login = () => {
       setError(res.error);
     }
   };
-
-  const fillDemoAccount = (demoAccount) => {
-    setUsername(demoAccount.username);
-    setPassword('');
-    setError('');
-    setStep(1);
-  };
-
-  const demoAccounts = [
-    { username: 'scolarite1', label: 'Scolarité Centrale', role: 'Contrôle Académique & PV', icon: Building2, color: '#38bdf8' },
-    { username: 'chef1', label: 'Chef de Service', role: 'Instruction & Affectation', icon: UserCheck, color: '#0ea5e9' },
-    { username: 'imprimeur1', label: 'Concepteur / Imprimeur', role: 'Conception & tirage sécurisé', icon: Printer, color: '#06b6d4' },
-    { username: 'agent_trans1', label: 'Agent de Transmission', role: 'Acheminement des diplômes', icon: Truck, color: '#6366f1' },
-    { username: 'presidence1', label: 'Présidence', role: 'Signature & Sceau', icon: Landmark, color: '#10b981' }
-  ];
 
   return (
     <div
@@ -513,80 +494,23 @@ const Login = () => {
                 </button>
               </form>
 
-              {/* Demo Accounts Quick Pick */}
-              <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <span
+              {/* Inscription : l'agent crée lui-même son compte (validé ensuite par l'administrateur) */}
+              <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', textAlign: 'center' }}>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: '#94a3b8', marginBottom: '0.75rem' }}>
+                  Pas encore de compte ?
+                </span>
+                <Link
+                  to="/inscription"
                   style={{
-                    display: 'block',
-                    fontSize: '0.725rem',
-                    fontWeight: 700,
-                    color: '#64748b',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    marginBottom: '0.85rem',
-                    textAlign: 'center'
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                    width: '100%', padding: '0.8rem 1rem', borderRadius: '10px',
+                    border: '1px solid rgba(56, 189, 248, 0.45)', color: '#e0f2fe',
+                    fontSize: '0.875rem', fontWeight: 700, textDecoration: 'none',
+                    backgroundColor: 'rgba(56, 189, 248, 0.08)'
                   }}
                 >
-                  Comptes de Démonstration Rapides
-                </span>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                  {demoAccounts.map((acc, i) => {
-                    const Icon = acc.icon;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => fillDemoAccount(acc)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.65rem 0.75rem',
-                          backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          borderRadius: '10px',
-                          color: '#e2e8f0',
-                          fontSize: '0.785rem',
-                          fontWeight: 600,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseOver={e => {
-                          e.currentTarget.style.borderColor = acc.color;
-                          e.currentTarget.style.backgroundColor = `${acc.color}15`;
-                          e.currentTarget.style.color = '#ffffff';
-                        }}
-                        onMouseOut={e => {
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
-                          e.currentTarget.style.color = '#e2e8f0';
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '6px',
-                            backgroundColor: `${acc.color}20`,
-                            color: acc.color,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}
-                        >
-                          <Icon size={15} />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                          <span style={{ fontWeight: 700, lineHeight: 1.2 }}>{acc.label}</span>
-                          <span style={{ fontSize: '0.675rem', color: '#94a3b8' }}>{acc.role}</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                  <UserPlus size={16} /> Créer mon compte
+                </Link>
               </div>
             </>
           )}

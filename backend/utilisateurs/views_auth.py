@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework.throttling import ScopedRateThrottle
+from core.openapi import OpenApiTypes, extend_schema, inline_serializer
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
@@ -23,11 +23,45 @@ from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from administration.models import JournalActivite
-from administration.services import journaliser
+from administration.services import adresse_codes, journaliser, masquer_adresse
 from .langue import EnFrancais
 from .models import Utilisateur, OTPCode
 
 Operation = JournalActivite.Operation
+
+
+def nouveau_code(user):
+    """Invalide les codes précédents de l'agent et en crée un nouveau."""
+    OTPCode.objects.filter(utilisateur=user, is_used=False).update(is_used=True)
+    code = OTPCode.generate_code()
+    OTPCode.objects.create(utilisateur=user, code=code)
+    return code
+
+
+def envoyer_code(user, code, *, objet, raison):
+    """
+    Envoie un code de vérification à l'adresse commune de l'espace de l'agent
+    (à défaut, à son adresse personnelle). Retourne l'adresse masquée.
+    """
+    destinataire = adresse_codes(user)
+    message = (
+        f"Bonjour,\n\n"
+        f"{raison}\n\n"
+        f"Identifiant concerné : {user.username} ({user.get_full_name() or 'sans nom'})\n"
+        f"Code de vérification :\n\n"
+        f"    {code}\n\n"
+        f"Ce code est valable pendant {OTPCode.OTP_VALIDITY_MINUTES} minutes. "
+        f"Ne le communiquez qu'à la personne concernée.\n"
+        f"Si personne de votre équipe n'est à l'origine de cette demande, ignorez ce message "
+        f"et prévenez l'administrateur.\n\n"
+        f"Université de Toliara — Système de Gestion des Diplômes"
+    )
+    if destinataire:
+        send_mail(objet, message, settings.DEFAULT_FROM_EMAIL, [destinataire], fail_silently=False)
+        return masquer_adresse(destinataire)
+    # Aucune adresse configurée : code affiché dans la console du serveur (développement)
+    print(f"\n{'='*50}\n[2FA] Code pour {user.username}: {code}\n{'='*50}\n")
+    return '(console — aucune adresse configurée)'
 
 
 class LoginStep1View(APIView):
@@ -61,6 +95,18 @@ class LoginStep1View(APIView):
             # Seul un identifiant existant est enregistré : un identifiant inconnu
             # peut être un mot de passe saisi dans le mauvais champ.
             compte = Utilisateur.objects.filter(username=username).first()
+            # Inscription non terminée : message explicite, seulement si le mot de passe est juste
+            if compte is not None and compte.inscription and compte.check_password(password):
+                journaliser(Operation.CONNEXION_COMPTE_DESACTIVE, cible=compte, request=request,
+                            details={'etape': 'identifiants', 'inscription': compte.inscription})
+                message = (
+                    "Votre inscription n'est pas terminée : saisissez le code envoyé à l'adresse de votre "
+                    "espace, ou inscrivez-vous de nouveau pour recevoir un nouveau code."
+                    if compte.inscription == Utilisateur.Inscription.CODE_A_CONFIRMER else
+                    "Votre compte est en attente de validation par l'administrateur."
+                )
+                return Response({'detail': message, 'inscription': compte.inscription},
+                                status=status.HTTP_403_FORBIDDEN)
             if compte is not None and not compte.is_active:
                 journaliser(Operation.CONNEXION_COMPTE_DESACTIVE, cible=compte, request=request,
                             details={'etape': 'identifiants'})
@@ -80,42 +126,11 @@ class LoginStep1View(APIView):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Invalider tous les anciens codes OTP non utilisés pour cet utilisateur
-        OTPCode.objects.filter(utilisateur=user, is_used=False).update(is_used=True)
-
-        # Générer un nouveau code OTP
-        code = OTPCode.generate_code()
-        OTPCode.objects.create(utilisateur=user, code=code)
-
-        # Préparer l'email
-        user_email = user.email or ''
-        sujet = 'Code de vérification - Université de Toliara'
-        message = (
-            f"Bonjour {user.first_name or user.username},\n\n"
-            f"Votre code de vérification pour accéder au système de gestion des diplômes est :\n\n"
-            f"    {code}\n\n"
-            f"Ce code est valable pendant {OTPCode.OTP_VALIDITY_MINUTES} minutes.\n"
-            f"Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.\n\n"
-            f"Université de Toliara — Système de Gestion des Diplômes"
+        code = nouveau_code(user)
+        masked = envoyer_code(
+            user, code, objet='Code de connexion - Université de Toliara',
+            raison="Une connexion à la plateforme de gestion des diplômes est en cours.",
         )
-
-        if user_email:
-            send_mail(
-                sujet,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [user_email],
-                fail_silently=False,
-            )
-            # Masquer partiellement l'email pour la réponse
-            parts = user_email.split('@')
-            masked = parts[0][:2] + '***@' + parts[1] if len(parts) == 2 else '***'
-        else:
-            # Pas d'email configuré : afficher dans la console (mode dev)
-            print(f"\n{'='*50}")
-            print(f"[2FA] Code OTP pour {user.username}: {code}")
-            print(f"{'='*50}\n")
-            masked = '(console — aucun email configuré)'
 
         resp_data = {
             'otp_required': True,
@@ -304,3 +319,151 @@ class DeconnexionView(APIView):
             Utilisateur.objects.filter(pk=user.pk).update(derniere_deconnexion=timezone.now())
             journaliser(Operation.DECONNEXION, cible=user, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ─── Inscription par l'agent lui-même ───────────────────────────────────────
+# 1. L'agent choisit son identifiant, son mot de passe et son espace ;
+# 2. un code est envoyé à l'adresse commune de cet espace : seul un membre de
+#    l'équipe peut le lire, ce qui prouve l'appartenance à l'espace ;
+# 3. le compte attend ensuite la validation de l'administrateur.
+
+def espaces_inscription():
+    """Espaces ouverts à l'inscription : ceux dont l'adresse commune est configurée."""
+    from administration.models import AdresseNotificationEquipe
+    configures = set(AdresseNotificationEquipe.objects.values_list('role', flat=True))
+    return [(code, libelle) for code, libelle in AdresseNotificationEquipe.EQUIPES if code in configures]
+
+
+class InscriptionSerializer(serializers.Serializer):
+    username = serializers.RegexField(r'^[\w.@+-]+$', max_length=150, error_messages={
+        'invalid': "Lettres, chiffres et . @ + - _ uniquement, sans espace."})
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    role = serializers.CharField()
+    password = serializers.CharField(trim_whitespace=False)
+    confirmation = serializers.CharField(trim_whitespace=False)
+
+    def validate_username(self, value):
+        existant = Utilisateur.objects.filter(username__iexact=value).first()
+        # Une inscription jamais confirmée ne bloque pas l'identifiant : elle sera remplacée
+        if existant is not None and existant.inscription != Utilisateur.Inscription.CODE_A_CONFIRMER:
+            raise serializers.ValidationError("Cet identifiant est déjà utilisé.")
+        return value
+
+    def validate_first_name(self, value):
+        return value.strip()
+
+    def validate_last_name(self, value):
+        return value.strip()
+
+    def validate_role(self, value):
+        if value not in dict(espaces_inscription()):
+            raise serializers.ValidationError(
+                "Cet espace n'est pas ouvert à l'inscription : son adresse commune n'est pas encore configurée.")
+        return value
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirmation']:
+            raise serializers.ValidationError({'confirmation': ['Les deux mots de passe ne correspondent pas.']})
+        candidat = Utilisateur(username=attrs['username'], first_name=attrs['first_name'],
+                               last_name=attrs['last_name'])
+        try:
+            validate_password(attrs['password'], candidat)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'password': list(e.messages)})
+        return attrs
+
+
+class EspacesInscriptionView(EnFrancais, APIView):
+    """Espaces dans lesquels un agent peut s'inscrire (aucune adresse n'est révélée)."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(tags=['Inscription'], summary="Espaces ouverts à l'inscription", responses=OpenApiTypes.OBJECT)
+    def get(self, request):
+        return Response([{'code': code, 'libelle': libelle} for code, libelle in espaces_inscription()])
+
+
+class InscriptionView(EnFrancais, APIView):
+    """Étape 1 : création du compte (inutilisable) et envoi du code à l'adresse de l'espace."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    # Chaque demande envoie un e-mail à la boîte de l'équipe : nombre limité par adresse IP
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'inscription'
+
+    @extend_schema(tags=['Inscription'], summary="Demande d'inscription (envoie un code à l'adresse de l'espace)",
+                   request=InscriptionSerializer, responses=OpenApiTypes.OBJECT)
+    def post(self, request):
+        serializer = InscriptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        donnees = serializer.validated_data
+        with transaction.atomic():
+            Utilisateur.objects.filter(
+                username__iexact=donnees['username'], inscription=Utilisateur.Inscription.CODE_A_CONFIRMER
+            ).delete()
+            user = Utilisateur(
+                username=donnees['username'], first_name=donnees['first_name'], last_name=donnees['last_name'],
+                role=donnees['role'], is_active=False, inscription=Utilisateur.Inscription.CODE_A_CONFIRMER,
+            )
+            user.set_password(donnees['password'])
+            user.save()
+            code = nouveau_code(user)
+            journaliser(Operation.INSCRIPTION_DEMANDEE, cible=user, request=request, details={'role': user.role})
+        indice = envoyer_code(
+            user, code, objet="Code d'inscription - Université de Toliara",
+            raison=(f"Une personne demande à créer un compte dans l'espace « {user.get_role_display()} ». "
+                    f"Transmettez-lui ce code seulement si elle fait bien partie de votre équipe."),
+        )
+        reponse = {
+            'username': user.username,
+            'email_hint': indice,
+            'message': f"Un code a été envoyé à l'adresse commune de l'espace ({indice}).",
+        }
+        if settings.DEBUG:
+            reponse['dev_otp_code'] = code
+        return Response(reponse, status=status.HTTP_201_CREATED)
+
+
+class ConfirmationInscriptionView(EnFrancais, APIView):
+    """Étape 2 : saisie du code ; le compte passe en attente de validation par l'administrateur."""
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    @extend_schema(
+        tags=['Inscription'], summary="Confirmation de l'inscription par le code de l'espace",
+        request=inline_serializer('ConfirmationInscription', {
+            'username': serializers.CharField(), 'code': serializers.CharField()}),
+        responses=OpenApiTypes.OBJECT,
+    )
+    def post(self, request):
+        username = str(request.data.get('username', '')).strip()
+        code = str(request.data.get('code', '')).strip()
+        code_incorrect = Response({'detail': 'Code de vérification incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+        user = Utilisateur.objects.filter(
+            username=username, inscription=Utilisateur.Inscription.CODE_A_CONFIRMER).first()
+        if user is None or not code:
+            return code_incorrect
+        with transaction.atomic():
+            otp = OTPCode.objects.select_for_update().filter(
+                utilisateur=user, is_used=False).order_by('-created_at').first()
+            if otp is None or not otp.is_valid():
+                return Response({'detail': "Ce code a expiré. Recommencez l'inscription pour en recevoir un nouveau."},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if not secrets.compare_digest(otp.code, code):
+                otp.tentatives += 1
+                otp.is_used = otp.tentatives >= OTPCode.MAX_TENTATIVES
+                otp.save(update_fields=['tentatives', 'is_used'])
+                journaliser(Operation.ECHEC_OTP, cible=user, request=request,
+                            details={'etape': 'inscription', 'tentatives': otp.tentatives})
+                if otp.is_used:
+                    return Response({'detail': "Trop de tentatives erronées. Recommencez l'inscription."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                return code_incorrect
+            otp.is_used = True
+            otp.save(update_fields=['is_used'])
+            user.inscription = Utilisateur.Inscription.EN_ATTENTE
+            user.save(update_fields=['inscription'])
+            journaliser(Operation.INSCRIPTION_CONFIRMEE, cible=user, request=request, details={'role': user.role})
+        return Response({'detail': "Inscription confirmée. Votre compte sera utilisable dès que "
+                                   "l'administrateur l'aura validé."})

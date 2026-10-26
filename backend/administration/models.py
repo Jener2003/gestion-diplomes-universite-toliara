@@ -38,6 +38,11 @@ class JournalActivite(models.Model):
         OTP_EXPIRE = 'OTP_EXPIRE', _('Code de vérification expiré')
         OTP_BLOQUE = 'OTP_BLOQUE', _('Code bloqué après trop de tentatives')
         MOT_DE_PASSE_DEFINI = 'MOT_DE_PASSE_DEFINI', _('Mot de passe défini via le lien sécurisé')
+        # Inscription par l'agent lui-même
+        INSCRIPTION_DEMANDEE = 'INSCRIPTION_DEMANDEE', _("Demande d'inscription")
+        INSCRIPTION_CONFIRMEE = 'INSCRIPTION_CONFIRMEE', _("Inscription confirmée par le code de l'espace")
+        INSCRIPTION_VALIDEE = 'INSCRIPTION_VALIDEE', _('Inscription validée')
+        INSCRIPTION_REFUSEE = 'INSCRIPTION_REFUSEE', _('Inscription refusée')
 
     OPERATIONS_ADMINISTRATION = frozenset({
         Operation.COMPTE_CREE,
@@ -47,6 +52,8 @@ class JournalActivite(models.Model):
         Operation.COMPTE_DESACTIVE,
         Operation.REINITIALISATION_DEMANDEE,
         Operation.ADRESSE_EQUIPE_MODIFIEE,
+        Operation.INSCRIPTION_VALIDEE,
+        Operation.INSCRIPTION_REFUSEE,
     })
     OPERATIONS_TECHNIQUES = frozenset({
         Operation.NOTIFICATION_EMAIL_ECHEC,
@@ -89,8 +96,10 @@ class JournalActivite(models.Model):
 class AdresseNotificationEquipe(models.Model):
     """
     Adresse électronique fonctionnelle d'une équipe métier (boîte partagée).
-    Elle reçoit une copie des notifications adressées à toute l'équipe ; elle ne
-    sert jamais d'identifiant de connexion (les comptes restent personnels).
+    Elle reçoit les codes de vérification (connexion et inscription) des agents
+    de l'espace, et une copie des notifications adressées à toute l'équipe si
+    l'envoi est activé. Les comptes, eux, restent personnels (un identifiant et
+    un mot de passe par agent).
     """
     # Les cinq équipes métier de l'application (rôles attribuables hors administrateur)
     EQUIPES = tuple(

@@ -49,6 +49,16 @@ class Utilisateur(AbstractUser):
         null=True,
         verbose_name=_('Établissement / Faculté rattaché')
     )
+    class Inscription(models.TextChoices):
+        # Compte créé par l'agent lui-même (page d'inscription), pas encore utilisable
+        CODE_A_CONFIRMER = 'CODE_A_CONFIRMER', _("Code d'inscription à confirmer")
+        EN_ATTENTE = 'EN_ATTENTE', _("En attente de validation par l'administrateur")
+
+    # Vide : compte utilisable (créé par l'administrateur, ou inscription validée)
+    inscription = models.CharField(
+        max_length=20, choices=Inscription.choices, blank=True, default='',
+        verbose_name=_("État de l'inscription")
+    )
     # Statut de présence affiché à l'administrateur (voir utilisateurs/presence.py)
     derniere_activite = models.DateTimeField(null=True, blank=True, verbose_name=_('Dernière activité'))
     derniere_deconnexion = models.DateTimeField(null=True, blank=True, verbose_name=_('Dernière déconnexion'))

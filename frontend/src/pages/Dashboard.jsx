@@ -36,7 +36,9 @@ import {
   Layers,
   ArrowLeft,
   ArrowRight,
-  TrendingUp
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -56,12 +58,18 @@ const STATUT_CONFIG = {
   RETOUR_SCOLARITE: { label: 'En retour vers le Chef de service', bg: '#e0f7fa', text: '#006064', border: '#b2ebf2' },
 };
 
+// Nombre de dossiers par page du tableau de bord
+const TAILLE_PAGE = 25;
+
 const Dashboard = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [demandes, setDemandes] = useState([]);
-  const [historiquesList, setHistoriquesList] = useState([]);
+  // Pagination côté serveur : une page de dossiers à la fois, compteurs des onglets fournis par l'API
+  const [page, setPage] = useState(1);
+  const [totalDemandes, setTotalDemandes] = useState(0);
+  const [compteurs, setCompteurs] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statutFilter, setStatutFilter] = useState('');
@@ -116,31 +124,29 @@ const Dashboard = () => {
 
   const fetchRequestId = React.useRef(0);
 
+  // Filtres de la vue courante, communs à la liste paginée et aux exports
+  const filtresCourants = () => ({
+    search: searchTerm,
+    statut: statutFilter,
+    faculte: faculteFilter,
+    date_debut: dateDebutFilter || undefined,
+    date_fin: dateFinFilter || undefined,
+    type_diplome: diplomeFilter || undefined,
+    // L'accueil de la Scolarité centrale affiche les dossiers à vérifier
+    onglet: activeTab === 'TABLEAU_DE_BORD' ? 'A_TRAITER' : activeTab,
+  });
+
   const fetchDemandesData = async () => {
     const requestId = ++fetchRequestId.current;
     setLoading(true);
     try {
-      const res = await demandesAPI.getDemandes({
-        search: searchTerm,
-        statut: statutFilter,
-        faculte: faculteFilter,
-        filiere: undefined,
-        date_debut: dateDebutFilter || undefined,
-        date_fin: dateFinFilter || undefined
-      });
+      const res = await demandesAPI.getDemandes({ ...filtresCourants(), page, page_size: TAILLE_PAGE });
       const statsRes = await demandesAPI.getStatsOverview();
       if (requestId !== fetchRequestId.current) return;
-      setDemandes(res.data);
+      setDemandes(res.data.results);
+      setTotalDemandes(res.data.count);
+      setCompteurs(res.data.compteurs || {});
       setStats(statsRes.data);
-
-      if (user?.role === 'SCOLARITE_CENTRALE') {
-        try {
-          const histRes = await demandesAPI.getHistoriques();
-          setHistoriquesList(histRes.data);
-        } catch (e) {
-          console.error('Historique load error:', e);
-        }
-      }
 
       if (user?.role === 'PRESIDENCE' || user?.role === 'CHEF_SERVICE') {
         try {
@@ -162,9 +168,17 @@ const Dashboard = () => {
     }
   };
 
+  // Nouveau filtre ou nouvel onglet : retour à la première page AVANT de charger
+  // (sinon une requête partirait avec l'ancien numéro de page, parfois inexistant)
+  const cleFiltres = JSON.stringify([searchTerm, statutFilter, faculteFilter, dateDebutFilter, dateFinFilter, diplomeFilter, activeTab]);
+  const derniereCleFiltres = React.useRef(cleFiltres);
   useEffect(() => {
+    if (derniereCleFiltres.current !== cleFiltres) {
+      derniereCleFiltres.current = cleFiltres;
+      if (page !== 1) { setPage(1); return; }
+    }
     fetchDemandesData();
-  }, [searchTerm, statutFilter, faculteFilter, dateDebutFilter, dateFinFilter, user]);
+  }, [cleFiltres, page, user]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -265,7 +279,15 @@ const Dashboard = () => {
   };
 
   // Export officiel en document PDF adapté au rôle et à l'espace actif
-  const exportPDF = () => {
+  const exportPDF = async () => {
+    let filteredDemandes;
+    try {
+      const res = await demandesAPI.getDemandes({ ...filtresCourants(), sans_historique: 1 });
+      filteredDemandes = res.data;
+    } catch {
+      showToast("Impossible de préparer l'export. Réessayez dans quelques instants.", "error");
+      return;
+    }
     if (!filteredDemandes || filteredDemandes.length === 0) {
       showToast("Aucun dossier à exporter dans cette vue.", "info");
       return;
@@ -291,8 +313,8 @@ const Dashboard = () => {
       sigLeft = "Pour le Chef de Service des Diplômes :";
       sigRight = "Pour la Scolarité Centrale / Destinataire :";
       if (activeTab === 'A_AFFECTER') {
-        documentTitle = "BORDEREAU D'AFFECTATION & D'INSTRUCTION POUR TIRAGE";
-        subTitle = "Dossiers validés par la Scolarité Centrale en attente d'attribution pour impression";
+        documentTitle = "LISTE DES DIPLÔMES À ENVOYER À L'IMPRIMEUR";
+        subTitle = "Dossiers validés par la Scolarité Centrale, en attente d'être confiés à un imprimeur";
       } else if (activeTab === 'A_IMPRIMER') {
         documentTitle = "BORDEREAU DES DOSSIERS EN COURS D'IMPRESSION";
         subTitle = "Dossiers affectés à l'imprimeur en cours de tirage sécurisé";
@@ -318,7 +340,7 @@ const Dashboard = () => {
       if (activeTab === 'A_IMPRIMER') {
         subTitle = "Dossiers affectés en attente et en cours de réalisation";
       } else if (activeTab === 'IMPRIMEES') {
-        subTitle = "Diplômes imprimés et finalisés prêts pour contrôle de conformité";
+        subTitle = "Diplômes imprimés, en attente de remise au Chef de service";
       } else {
         subTitle = "Registre d'activité de l'atelier de reprographie sécurisée";
       }
@@ -665,74 +687,14 @@ const Dashboard = () => {
     );
   };
 
-  const getFilteredDemandes = () => {
-    let list = [...demandes];
-
-    if (user?.role === 'SCOLARITE_CENTRALE') {
-      if (activeTab === 'A_TRAITER') {
-        list = list.filter(d => ['EN_ATTENTE_VERIFICATION', 'DOSSIER_INCOMPLET'].includes(d.statut));
-      } else if (activeTab === 'VALIDEES') {
-        // Demandes validées par la scolarité centrale (qui continuent leur cycle aval)
-        list = list.filter(d => !d.date_transmission_chef && ([
-          'VALIDEE', 'EN_TRAITEMENT', 'EN_ATTENTE_IMPRESSION', 'EN_IMPRESSION',
-          'IMPRIME', 'EN_TRANSMISSION_PRESIDENT', 'EN_ATTENTE_SIGNATURE_PRESIDENT',
-          'SIGNE_PRESIDENT', 'RETOUR_SCOLARITE'
-        ].includes(d.statut)));
-      } else if (activeTab === 'REJETEES') {
-        list = list.filter(d => d.statut === 'REFUSEE');
-      }
-    } else {
-      // Autres rôles
-      if (activeTab === 'A_VERIFIER') {
-        list = list.filter(d => d.statut === 'EN_ATTENTE_VERIFICATION');
-      } else if (activeTab === 'VALIDEES') {
-        list = list.filter(d => [
-          'VALIDEE', 'EN_TRAITEMENT', 'EN_ATTENTE_IMPRESSION', 'EN_IMPRESSION',
-          'IMPRIME', 'EN_TRANSMISSION_PRESIDENT', 'EN_ATTENTE_SIGNATURE_PRESIDENT',
-          'SIGNE_PRESIDENT', 'RETOUR_SCOLARITE'
-        ].includes(d.statut));
-      } else if (activeTab === 'REFUSEES') {
-        list = list.filter(d => d.statut === 'REFUSEE');
-      } else if (activeTab === 'EN_TRAITEMENT') {
-        list = list.filter(d => ['EN_TRAITEMENT', 'EN_ATTENTE_IMPRESSION'].includes(d.statut));
-      } else if (activeTab === 'EN_IMPRESSION') {
-        list = list.filter(d => ['EN_IMPRESSION', 'IMPRIME'].includes(d.statut));
-      } else if (activeTab === 'ATTENTE_SIGNATURE') {
-        list = list.filter(d => d.statut === 'EN_ATTENTE_SIGNATURE_PRESIDENT');
-      } else if (activeTab === 'SIGNEES') {
-        list = list.filter(d => d.statut === 'SIGNE_PRESIDENT');
-      } else if (activeTab === 'A_AFFECTER') {
-        list = list.filter(d => ['VALIDEE', 'EN_TRAITEMENT'].includes(d.statut));
-      } else if (activeTab === 'A_IMPRIMER') {
-        list = list.filter(d => ['EN_ATTENTE_IMPRESSION', 'EN_IMPRESSION'].includes(d.statut));
-      } else if (activeTab === 'IMPRIMEES') {
-        list = list.filter(d => d.statut === 'IMPRIME');
-      } else if (activeTab === 'NAVETTE_PRES') {
-        list = list.filter(d => d.statut === 'EN_TRANSMISSION_PRESIDENT');
-      } else if (activeTab === 'A_SIGNER_PRES') {
-        list = list.filter(d => d.statut === 'EN_ATTENTE_SIGNATURE_PRESIDENT');
-      } else if (activeTab === 'NAVETTE_RETOUR') {
-        list = list.filter(d => ['SIGNE_PRESIDENT', 'RETOUR_SCOLARITE'].includes(d.statut));
-      }
-    }
-
-    if (diplomeFilter) {
-      list = list.filter(d => d.type_diplome?.toLowerCase().includes(diplomeFilter.toLowerCase()));
-    }
-
-    return list;
-  };
-
-  const filteredDemandes = getFilteredDemandes();
+  // Dossiers de la page courante, déjà filtrés par onglet et par critères côté serveur
+  const filteredDemandes = demandes;
 
   // Compteurs dynamiques issus des données réelles
-  const countATraiter = demandes.filter(d => ['EN_ATTENTE_VERIFICATION', 'DOSSIER_INCOMPLET'].includes(d.statut)).length;
-  const countValidees = demandes.filter(d => !d.date_transmission_chef && ([
-    'VALIDEE', 'EN_TRAITEMENT', 'EN_ATTENTE_IMPRESSION', 'EN_IMPRESSION',
-    'IMPRIME', 'EN_TRANSMISSION_PRESIDENT', 'EN_ATTENTE_SIGNATURE_PRESIDENT',
-    'SIGNE_PRESIDENT', 'RETOUR_SCOLARITE'
-  ].includes(d.statut))).length;
-  const countRejetees = demandes.filter(d => d.statut === 'REFUSEE').length;
+  const countATraiter = compteurs.A_TRAITER ?? 0;
+  const countValidees = compteurs.VALIDEES ?? 0;
+  const countRejetees = compteurs.REJETEES ?? 0;
+  const nombrePages = Math.max(1, Math.ceil(totalDemandes / TAILLE_PAGE));
 
   const renderRoleTabs = () => {
     const role = user?.role;
@@ -752,7 +714,7 @@ const Dashboard = () => {
     } else if (role === 'CHEF_SERVICE') {
       tabs = [
         { key: 'ALL', label: 'Vue globale' },
-        { key: 'A_AFFECTER', label: 'À affecter pour tirage' },
+        { key: 'A_AFFECTER', label: 'À envoyer à l\'imprimeur' },
         { key: 'A_IMPRIMER', label: 'En cours d\'impression' },
         { key: 'IMPRIMEES', label: 'Imprimés à transmettre' },
         { key: 'NAVETTE_PRES', label: 'Transmissions Présidence' },
@@ -762,7 +724,7 @@ const Dashboard = () => {
       tabs = [
         { key: 'ALL', label: 'File complète' },
         { key: 'A_IMPRIMER', label: 'À imprimer / En cours' },
-        { key: 'IMPRIMEES', label: 'Imprimés achevés' },
+        { key: 'IMPRIMEES', label: 'Imprimés, à remettre au Chef' },
       ];
     } else if (role === 'AGENT_TRANSMISSION') {
       tabs = [
@@ -905,7 +867,7 @@ const Dashboard = () => {
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f0fdfa'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#ffffff'; }}
             >
-              <Download size={16} /> Exporter en PDF ({filteredDemandes.length})
+              <Download size={16} /> Exporter en PDF ({totalDemandes})
             </button>
           </div>}
         </div>
@@ -1295,6 +1257,24 @@ const Dashboard = () => {
                   </tbody>
                 </table>
               </div>
+              {totalDemandes > TAILLE_PAGE && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', padding: '0.85rem 1.1rem', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', fontSize: '0.85rem', color: '#475569' }}>
+                  <span>
+                    Dossiers {(page - 1) * TAILLE_PAGE + 1} à {Math.min(page * TAILLE_PAGE, totalDemandes)} sur {totalDemandes}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button type="button" className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                            onClick={() => setPage(page - 1)} disabled={page <= 1 || loading}>
+                      <ChevronLeft size={14} /> Précédent
+                    </button>
+                    <span style={{ fontWeight: 700 }}>Page {page} / {nombrePages}</span>
+                    <button type="button" className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                            onClick={() => setPage(page + 1)} disabled={page >= nombrePages || loading}>
+                      Suivant <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -2059,14 +2039,9 @@ const Dashboard = () => {
                           >
                             <Layers size={16} /> Prendre en charge le dossier
                           </button>
-                          <button
-                            onClick={() => setActiveActionModal('AFFECTER_IMPRIMEUR')}
-                            disabled={submittingAction}
-                            className="btn btn-primary"
-                            style={{ backgroundColor: '#0284c7', borderColor: '#0284c7' }}
-                          >
-                            <Printer size={16} /> Affecter à l'imprimeur
-                          </button>
+                          <span style={{ fontSize: '0.82rem', color: '#64748b', alignSelf: 'center' }}>
+                            Prenez d'abord le dossier en charge : vous pourrez ensuite l'envoyer à un imprimeur.
+                          </span>
                         </div>
                       )}
 

@@ -51,6 +51,35 @@ def journaliser(operation, *, auteur=None, cible=None, request=None, details=Non
     )
 
 
+def adresse_espace(role):
+    """Adresse commune de l'espace (boîte partagée de l'équipe), ou '' si non configurée."""
+    adresse = AdresseNotificationEquipe.objects.filter(role=role).only('email').first()
+    return adresse.email if adresse else ''
+
+
+def adresse_codes(user):
+    """
+    Destinataire des codes de vérification d'un agent : l'adresse commune de son
+    espace si elle est configurée, sinon son adresse personnelle (cas de
+    l'administrateur, qui n'appartient à aucune équipe).
+    """
+    return adresse_espace(user.role) or user.email or ''
+
+
+def adresse_liens(user):
+    """
+    Destinataire des liens de mot de passe : l'adresse personnelle en priorité
+    (un lien ouvert par un collègue lui permettrait de choisir le mot de passe),
+    sinon l'adresse commune de l'espace.
+    """
+    return user.email or adresse_espace(user.role)
+
+
+def masquer_adresse(adresse):
+    nom, _, domaine = adresse.partition('@')
+    return f"{nom[:2]}***@{domaine}" if domaine else '***'
+
+
 def lien_definition_mot_de_passe(user):
     """Lien à usage unique : le jeton devient invalide dès que le mot de passe change."""
     uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -60,11 +89,12 @@ def lien_definition_mot_de_passe(user):
 
 def envoyer_lien_mot_de_passe(user, *, nouveau_compte):
     """
-    Envoie à l'utilisateur, et à lui seul, le lien de définition de son mot de passe.
+    Envoie le lien de définition du mot de passe (adresse personnelle, sinon celle de l'espace).
     L'administrateur ne voit jamais ni le lien ni le mot de passe.
     Retourne True si l'e-mail est parti.
     """
-    if not user.email:
+    destinataire = adresse_liens(user)
+    if not destinataire:
         return False
     validite_heures = settings.PASSWORD_RESET_TIMEOUT // 3600
     objet = (
@@ -86,7 +116,7 @@ def envoyer_lien_mot_de_passe(user, *, nouveau_compte):
         f"Université de Toliara — Système de Gestion des Diplômes"
     )
     try:
-        send_mail(objet, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+        send_mail(objet, message, settings.DEFAULT_FROM_EMAIL, [destinataire], fail_silently=False)
         return True
     except Exception as exc:
         # Pas de contenu du message dans les journaux : il contient le lien

@@ -63,6 +63,10 @@ export const authAPI = {
   getMe: () => API.get('utilisateurs/me/'),
   // Déconnexion côté serveur (statut « hors ligne » immédiat), par le jeton de renouvellement
   logout: (refresh) => API.post('auth/logout/', { refresh }),
+  // Inscription : espaces ouverts, demande (code envoyé à l'adresse de l'espace), confirmation
+  espacesInscription: () => API.get('auth/inscription/espaces/'),
+  inscrire: (donnees) => API.post('auth/inscription/', donnees),
+  confirmerInscription: (username, code) => API.post('auth/inscription/confirmer/', { username, code }),
   getImprimeurs: () => API.get('utilisateurs/imprimeurs/'),
   getAgentsTransmission: () => API.get('utilisateurs/agents_transmission/'),
 };
@@ -103,6 +107,7 @@ export const adminAPI = {
   activerUtilisateur: (id) => API.post(`administration/utilisateurs/${id}/activer/`),
   desactiverUtilisateur: (id) => API.post(`administration/utilisateurs/${id}/desactiver/`),
   reinitialiserAcces: (id) => API.post(`administration/utilisateurs/${id}/reinitialiser_acces/`),
+  refuserInscription: (id) => API.post(`administration/utilisateurs/${id}/refuser_inscription/`),
   getRoles: () => API.get('administration/roles/'),
   getEquipes: () => API.get('administration/equipes/'),
   definirEquipe: (role, data) => API.put(`administration/equipes/${role}/`, data),

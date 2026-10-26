@@ -5,8 +5,7 @@ from django.contrib.auth.password_validation import get_default_password_validat
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from core.openapi import OpenApiTypes, extend_schema
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, ValidationError
@@ -22,7 +21,7 @@ from utilisateurs.permissions import EstAdministrateurSysteme
 from utilisateurs.presence import filtre_en_ligne
 from .models import AdresseNotificationEquipe, JournalActivite
 from .serializers import AdminUtilisateurSerializer, AdresseEquipeSerializer, JournalActiviteSerializer
-from .services import envoyer_email_equipe, envoyer_lien_mot_de_passe, journaliser
+from .services import adresse_liens, envoyer_email_equipe, envoyer_lien_mot_de_passe, journaliser
 
 Operation = JournalActivite.Operation
 Role = Utilisateur.Role
@@ -91,6 +90,8 @@ class UtilisateurAdminViewSet(EnFrancais, mixins.ListModelMixin, mixins.Retrieve
             queryset = queryset.filter(role=params['role'])
         if params.get('actif') in ('true', 'false'):
             queryset = queryset.filter(is_active=params['actif'] == 'true')
+        elif params.get('actif') == 'attente':
+            queryset = queryset.exclude(inscription='')
         return queryset
 
     def perform_create(self, serializer):
@@ -138,10 +139,31 @@ class UtilisateurAdminViewSet(EnFrancais, mixins.ListModelMixin, mixins.Retrieve
         user = self.get_object()
         if user.is_active:
             return Response({'detail': 'Ce compte est déjà actif.'}, status=status.HTTP_409_CONFLICT)
+        if user.inscription == Utilisateur.Inscription.CODE_A_CONFIRMER:
+            return Response({'detail': "Cette inscription n'a pas été confirmée par le code envoyé à l'adresse "
+                                       "de l'espace : elle ne peut pas être validée."},
+                            status=status.HTTP_409_CONFLICT)
+        inscription = user.inscription
         user.is_active = True
-        user.save(update_fields=['is_active'])
-        journaliser(Operation.COMPTE_ACTIVE, auteur=request.user, cible=user, request=request)
+        user.inscription = ''
+        user.save(update_fields=['is_active', 'inscription'])
+        journaliser(Operation.INSCRIPTION_VALIDEE if inscription else Operation.COMPTE_ACTIVE,
+                    auteur=request.user, cible=user, request=request,
+                    details={'role': user.role} if inscription else None)
         return self._repondre(user)
+
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def refuser_inscription(self, request, pk=None):
+        """Supprime une inscription en attente : le compte n'a jamais servi, il n'a aucun historique."""
+        user = self.get_object()
+        if not user.inscription:
+            return Response({'detail': "Ce compte n'est pas une inscription en attente : désactivez-le plutôt."},
+                            status=status.HTTP_409_CONFLICT)
+        journaliser(Operation.INSCRIPTION_REFUSEE, auteur=request.user, cible=user, request=request,
+                    details={'role': user.role, 'etat': user.inscription})
+        user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post'])
     @transaction.atomic
@@ -172,8 +194,9 @@ class UtilisateurAdminViewSet(EnFrancais, mixins.ListModelMixin, mixins.Retrieve
         if not user.is_active:
             return Response({'detail': "Activez d'abord ce compte avant de réinitialiser son accès."},
                             status=status.HTTP_409_CONFLICT)
-        if not user.email:
-            return Response({'detail': "Ce compte n'a pas d'adresse e-mail : renseignez-la avant de réinitialiser l'accès."},
+        if not adresse_liens(user):
+            return Response({'detail': "Aucune adresse ne peut recevoir le lien : renseignez l'adresse personnelle "
+                                       "du compte ou configurez l'adresse commune de son espace."},
                             status=status.HTTP_400_BAD_REQUEST)
         # L'ancien mot de passe cesse immédiatement de fonctionner
         user.set_unusable_password()
@@ -208,6 +231,12 @@ def alertes_securite():
     if settings.DEBUG:
         ajouter('attention', 'DEBUG_ACTIF',
                 "Le mode DEBUG est activé : à désactiver en production (DJANGO_DEBUG=False).")
+
+    en_attente = Utilisateur.objects.filter(inscription=Utilisateur.Inscription.EN_ATTENTE).count()
+    if en_attente:
+        ajouter('attention', 'INSCRIPTIONS_EN_ATTENTE',
+                "Des inscriptions confirmées attendent votre validation (page Utilisateurs, filtre « En attente »).",
+                en_attente)
 
     nb_admins = actifs.filter(role=Role.ADMIN_SYSTEME).count()
     if nb_admins <= 1:

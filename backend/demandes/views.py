@@ -2,14 +2,17 @@ import re
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
-from django.db.models import Count, Q
+from django.db.models import Count, Prefetch, Q
 from django.db import transaction
 
 from .models import DemandeDiplome, Historique
-from .serializers import DemandeDiplomeSerializer, HistoriqueSerializer
+from .serializers import (
+    STATUTS_HORS_PERIMETRE, DemandeDiplomeListeSerializer, DemandeDiplomeSerializer, HistoriqueSerializer,
+)
 from notifications.models import Notification
 from administration.services import notifier_equipe_par_email
 from utilisateurs.models import Utilisateur, Etudiant
@@ -106,6 +109,61 @@ def parse_bool(value):
     return str(value).lower() in ('true', '1', 'yes', 'on')
 
 
+# ─── Onglets du tableau de bord (source unique, appliquée côté serveur) ─────
+VALIDEES_AVAL = (
+    Statut.VALIDEE, Statut.EN_TRAITEMENT, Statut.EN_ATTENTE_IMPRESSION, Statut.EN_IMPRESSION,
+    Statut.IMPRIME, Statut.EN_TRANSMISSION_PRESIDENT, Statut.EN_ATTENTE_SIGNATURE_PRESIDENT,
+    Statut.SIGNE_PRESIDENT, Statut.RETOUR_SCOLARITE,
+)
+ONGLETS = {
+    'A_TRAITER': (Statut.EN_ATTENTE_VERIFICATION, Statut.DOSSIER_INCOMPLET),
+    'VALIDEES': VALIDEES_AVAL,
+    'REJETEES': (Statut.REFUSEE,),
+    'REFUSEES': (Statut.REFUSEE,),
+    'A_VERIFIER': (Statut.EN_ATTENTE_VERIFICATION,),
+    'EN_TRAITEMENT': (Statut.EN_TRAITEMENT, Statut.EN_ATTENTE_IMPRESSION),
+    'EN_IMPRESSION': (Statut.EN_IMPRESSION, Statut.IMPRIME),
+    'ATTENTE_SIGNATURE': (Statut.EN_ATTENTE_SIGNATURE_PRESIDENT,),
+    'SIGNEES': (Statut.SIGNE_PRESIDENT,),
+    'A_AFFECTER': (Statut.VALIDEE, Statut.EN_TRAITEMENT),
+    'A_IMPRIMER': (Statut.EN_ATTENTE_IMPRESSION, Statut.EN_IMPRESSION),
+    'IMPRIMEES': (Statut.IMPRIME,),
+    'NAVETTE_PRES': (Statut.EN_TRANSMISSION_PRESIDENT,),
+    'A_SIGNER_PRES': (Statut.EN_ATTENTE_SIGNATURE_PRESIDENT,),
+    'NAVETTE_RETOUR': (Statut.SIGNE_PRESIDENT, Statut.RETOUR_SCOLARITE),
+}
+
+
+def filtre_onglet(cle, user):
+    """Q d'un onglet, ou None si l'onglet n'existe pas (« ALL », « TABLEAU_DE_BORD »)."""
+    statuts = ONGLETS.get(cle)
+    if statuts is None:
+        return None
+    # Les statuts hors périmètre sont affichés sous leur équivalent : on les inclut avec lui
+    bruts = set(statuts) | {brut for brut, affiche in STATUTS_HORS_PERIMETRE.items() if affiche in statuts}
+    critere = Q(statut__in=bruts)
+    if cle == 'VALIDEES' and user.role == Utilisateur.Role.SCOLARITE_CENTRALE:
+        # Pour la Scolarité centrale, une demande transmise au Chef de service part aux archives
+        critere &= Q(date_transmission_chef__isnull=True)
+    return critere
+
+
+class PaginationDemandes(PageNumberPagination):
+    """
+    Pagination à la demande : appliquée seulement si le client envoie ?page=
+    (tableau de bord). Sans ce paramètre, la liste complète reste disponible
+    pour les exports.
+    """
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+    def paginate_queryset(self, queryset, request, view=None):
+        if 'page' not in request.query_params:
+            return None
+        return super().paginate_queryset(queryset, request, view)
+
+
 # Matrice complète des transitions du circuit administratif réel à 9 étapes
 TRANSITIONS_AUTORISEES = {
     # ── Étape 3 : Scolarité Centrale ──────────────────────────────────────────
@@ -137,7 +195,8 @@ TRANSITIONS_AUTORISEES = {
     },
     'AFFECTER_IMPRIMEUR': {
         'roles': [Utilisateur.Role.CHEF_SERVICE],
-        'depuis': [Statut.VALIDEE, Statut.EN_TRAITEMENT],
+        # Prise en charge obligatoire : le dossier doit d'abord passer « En traitement »
+        'depuis': [Statut.EN_TRAITEMENT],
         'nouveau_statut': Statut.EN_ATTENTE_IMPRESSION,
         'label': 'Affecter à un imprimeur'
     },
@@ -188,9 +247,18 @@ TRANSITIONS_AUTORISEES = {
 
 
 class DemandeDiplomeViewSet(viewsets.ModelViewSet):
-    queryset = DemandeDiplome.objects.all().order_by('-date_demande')
+    # -id : ordre stable entre deux pages quand plusieurs dossiers ont la même date
+    queryset = DemandeDiplome.objects.all().order_by('-date_demande', '-id')
     serializer_class = DemandeDiplomeSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = PaginationDemandes
+
+    def sans_historique(self):
+        # Exports : l'historique complet de chaque dossier n'est pas nécessaire
+        return self.action in ('list', 'archives') and parse_bool(self.request.query_params.get('sans_historique', ''))
+
+    def get_serializer_class(self):
+        return DemandeDiplomeListeSerializer if self.sans_historique() else DemandeDiplomeSerializer
 
     def create(self, request, *args, **kwargs):
         user = request.user
@@ -295,6 +363,8 @@ class DemandeDiplomeViewSet(viewsets.ModelViewSet):
                 Q(etudiant__matricule__icontains=search_filter) |
                 Q(etudiant__nom__icontains=search_filter) |
                 Q(etudiant__prenom__icontains=search_filter) |
+                Q(etudiant__faculte__icontains=search_filter) |
+                Q(etablissement_origine__icontains=search_filter) |
                 Q(type_diplome__icontains=search_filter)
             )
             # Recherche par la référence affichée : « DEM-012 », « dem12 » ou « 12 »
@@ -302,7 +372,39 @@ class DemandeDiplomeViewSet(viewsets.ModelViewSet):
             if ref.isdigit():
                 critere |= Q(id=int(ref))
             queryset = queryset.filter(critere)
-        return queryset
+        type_diplome = self.request.query_params.get('type_diplome')
+        if type_diplome:
+            queryset = queryset.filter(type_diplome__icontains=type_diplome)
+
+        # Données liées chargées en quelques requêtes, quel que soit le nombre de dossiers
+        # (au lieu de ~7 requêtes par dossier)
+        queryset = queryset.select_related(
+            'etudiant__utilisateur', 'imprimeur_assigne', 'agent_transmission', 'agent_responsable',
+            'diplome',
+        )
+        if self.sans_historique():
+            return queryset
+        return queryset.prefetch_related(
+            Prefetch('historique', queryset=Historique.objects.select_related('utilisateur')),
+        )
+
+    def list(self, request, *args, **kwargs):
+        """
+        Liste filtrée par onglet (?onglet=) et paginée (?page=), avec le nombre de
+        dossiers de chaque onglet calculé en une seule requête.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        critere = filtre_onglet(request.query_params.get('onglet', ''), request.user)
+        liste = queryset.filter(critere) if critere is not None else queryset
+        page = self.paginate_queryset(liste)
+        if page is None:
+            return Response(self.get_serializer(liste, many=True).data)
+        reponse = self.get_paginated_response(self.get_serializer(page, many=True).data)
+        compteurs = queryset.order_by().aggregate(**{
+            cle: Count('id', filter=filtre_onglet(cle, request.user)) for cle in ONGLETS
+        })
+        reponse.data['compteurs'] = compteurs
+        return reponse
 
     @action(detail=True, methods=['post'])
     @transaction.atomic

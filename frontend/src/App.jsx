@@ -11,6 +11,7 @@ import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import Archives from './pages/Archives';
 import DefinirMotDePasse from './pages/DefinirMotDePasse';
+import Inscription from './pages/Inscription';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUtilisateurs from './pages/admin/AdminUtilisateurs';
 import AdminRoles from './pages/admin/AdminRoles';
@@ -43,6 +44,8 @@ function App() {
           <Route path="/verification" element={<Navigate to="/login" replace />} />
           {/* Lien personnel reçu par e-mail (création de compte / réinitialisation) */}
           <Route path="/definir-mot-de-passe/:uid/:token" element={<DefinirMotDePasse />} />
+          {/* Inscription par l'agent (code de l'espace, puis validation par l'administrateur) */}
+          <Route path="/inscription" element={<Inscription />} />
 
           {/* Espace Administrateur système */}
           {ROUTES_ADMIN.map(({ path, element }) => (

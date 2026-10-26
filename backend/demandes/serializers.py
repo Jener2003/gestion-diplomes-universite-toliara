@@ -40,3 +40,8 @@ class DemandeDiplomeSerializer(serializers.ModelSerializer):
 
     def get_statut(self, demande) -> str:
         return STATUTS_HORS_PERIMETRE.get(demande.statut, demande.statut)
+
+
+class DemandeDiplomeListeSerializer(DemandeDiplomeSerializer):
+    """Même contenu sans l'historique : exports de listes complètes."""
+    historique = None

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Search, UserPlus, Pencil, UserX, UserCheck, KeyRound } from 'lucide-react';
+import { Search, UserPlus, Pencil, UserX, UserCheck, UserMinus, KeyRound } from 'lucide-react';
 import AdminLayout from '../../components/AdminLayout';
 import { useAuth } from '../../components/AuthContext';
 import { adminAPI } from '../../services/api';
@@ -28,7 +28,7 @@ const FormulaireCompte = ({ compte, roles, onAnnuler, onValider, masque }) => {
     if (!edition && !/^[\w.@+-]+$/.test(valeurs.username.trim())) err.username = 'Lettres, chiffres et . @ + - _ uniquement, sans espace.';
     if (!valeurs.first_name.trim()) err.first_name = 'Prénom obligatoire.';
     if (!valeurs.last_name.trim()) err.last_name = 'Nom obligatoire.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valeurs.email.trim())) err.email = 'Adresse e-mail invalide.';
+    if (valeurs.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valeurs.email.trim())) err.email = 'Adresse e-mail invalide.';
     if (!valeurs.role) err.role = 'Choisissez un rôle.';
     setErreurs(err);
     if (Object.keys(err).length === 0) onValider(valeurs, setErreurs);
@@ -72,9 +72,12 @@ const FormulaireCompte = ({ compte, roles, onAnnuler, onValider, masque }) => {
           </div>
         </div>
         <div className="adm-form-ligne">
-          <label htmlFor="f-email">Adresse e-mail personnelle</label>
+          <label htmlFor="f-email">Adresse e-mail personnelle (facultative)</label>
           <input id="f-email" type="email" className="adm-champ" value={valeurs.email} onChange={changer('email')} />
-          <span className="adm-aide">Reçoit le code de connexion et le lien de mot de passe. Pas d'adresse d'équipe.</span>
+          <span className="adm-aide">
+            Les codes de connexion partent à l'adresse commune de l'espace si elle est configurée, sinon ici.
+            Le lien de mot de passe part ici en priorité.
+          </span>
           <Erreur champ="email" />
         </div>
         <div className="adm-form-ligne">
@@ -225,20 +228,53 @@ const AdminUtilisateurs = () => {
     });
   };
 
+  const validerInscription = (compte) => {
+    demander({
+      titre: "Valider l'inscription",
+      libelle: 'Valider',
+      message: (
+        <p><strong>{[compte.first_name, compte.last_name].filter(Boolean).join(' ')}</strong> ({compte.username}) a confirmé son
+          inscription avec le code envoyé à l'adresse de l'espace <strong>{compte.role_display}</strong>. Une fois validé, ce compte
+          pourra se connecter et accéder aux dossiers de cet espace.</p>
+      ),
+      action: async () => {
+        await adminAPI.activerUtilisateur(compte.id);
+        return `Inscription de « ${compte.username} » validée : le compte peut se connecter.`;
+      },
+    });
+  };
+
+  const refuserInscription = (compte) => {
+    demander({
+      titre: "Refuser l'inscription",
+      libelle: 'Refuser',
+      danger: true,
+      message: (
+        <p>La demande d'inscription de <strong>{compte.username}</strong> ({compte.role_display}) sera supprimée. La personne
+          pourra se réinscrire si besoin.</p>
+      ),
+      action: async () => {
+        await adminAPI.refuserInscription(compte.id);
+        return `Inscription de « ${compte.username} » refusée.`;
+      },
+    });
+  };
+
   const reinitialiser = (compte) => {
+    const destinataire = compte.email || compte.adresse_codes;
     demander({
       titre: "Réinitialiser l'accès",
       libelle: 'Réinitialiser',
       danger: true,
       message: (
         <p>Le mot de passe actuel de <strong>{compte.username}</strong> cessera immédiatement de fonctionner. Un lien personnel,
-          valable une seule fois, sera envoyé à <strong>{compte.email}</strong> pour en choisir un nouveau.
+          valable une seule fois, sera envoyé à <strong>{destinataire}</strong> pour en choisir un nouveau.
           Vous ne verrez jamais ce mot de passe.</p>
       ),
       action: async () => {
         const res = await adminAPI.reinitialiserAcces(compte.id);
         return res.data.lien_envoye
-          ? `Accès de « ${compte.username} » réinitialisé : lien envoyé à ${compte.email}.`
+          ? `Accès de « ${compte.username} » réinitialisé : lien envoyé à ${destinataire}.`
           : `Accès de « ${compte.username} » réinitialisé, mais l'e-mail n'a pas pu être envoyé. Vérifiez la messagerie puis recommencez.`;
       },
     });
@@ -269,6 +305,7 @@ const AdminUtilisateurs = () => {
           <option value="">Actifs et inactifs</option>
           <option value="true">Actifs</option>
           <option value="false">Inactifs</option>
+          <option value="attente">Inscriptions en attente</option>
         </select>
       </div>
 
@@ -288,12 +325,17 @@ const AdminUtilisateurs = () => {
                   <tr key={c.id}>
                     <td>
                       <span className="principal">{[c.first_name, c.last_name].filter(Boolean).join(' ') || '—'}</span>
-                      <span className="secondaire">{c.email || 'aucune adresse e-mail'}</span>
+                      <span className="secondaire" title="Adresse qui reçoit les codes de vérification">
+                        {c.adresse_codes ? `Codes : ${c.adresse_codes}` : 'aucune adresse pour les codes'}
+                      </span>
                     </td>
                     <td>{c.username}{soiMeme && <span className="secondaire">(vous)</span>}</td>
                     <td><span className={`adm-pastille ${c.role_obsolete ? 'obsolete' : 'role'}`}>{c.role_display}</span></td>
                     <td>
-                      <span className={`adm-pastille ${c.is_active ? 'actif' : 'inactif'}`}>{c.is_active ? 'Actif' : 'Inactif'}</span>
+                      {c.inscription === 'EN_ATTENTE' ? <span className="adm-pastille attente">À valider</span>
+                        : c.inscription === 'CODE_A_CONFIRMER' ? <span className="adm-pastille inactif">Code non confirmé</span>
+                          : <span className={`adm-pastille ${c.is_active ? 'actif' : 'inactif'}`}>{c.is_active ? 'Actif' : 'Inactif'}</span>}
+                      {c.inscription && <span className="secondaire">Inscription</span>}
                       {c.is_active && !c.mot_de_passe_defini && <span className="secondaire">Mot de passe à définir</span>}
                     </td>
                     <td title={`Dernière connexion : ${formatDate(c.last_login)}`}>
@@ -314,14 +356,29 @@ const AdminUtilisateurs = () => {
                         </button>
                         {!soiMeme && (
                           <>
-                            <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => basculerActivation(c)}
-                                    title={c.is_active ? 'Désactiver' : 'Activer'}
-                                    aria-label={`${c.is_active ? 'Désactiver' : 'Activer'} ${c.username}`}>
-                              {c.is_active ? <UserX size={15} /> : <UserCheck size={15} />}
-                            </button>
+                            {c.inscription ? (
+                              <>
+                                {c.inscription === 'EN_ATTENTE' && (
+                                  <button type="button" className="adm-btn adm-btn-primaire adm-btn-petit" onClick={() => validerInscription(c)}
+                                          aria-label={`Valider l'inscription de ${c.username}`}>
+                                    <UserCheck size={14} /> Valider
+                                  </button>
+                                )}
+                                <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => refuserInscription(c)}
+                                        title="Refuser l'inscription (supprime la demande)" aria-label={`Refuser l'inscription de ${c.username}`}>
+                                  <UserMinus size={15} />
+                                </button>
+                              </>
+                            ) : (
+                              <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => basculerActivation(c)}
+                                      title={c.is_active ? 'Désactiver' : 'Activer'}
+                                      aria-label={`${c.is_active ? 'Désactiver' : 'Activer'} ${c.username}`}>
+                                {c.is_active ? <UserX size={15} /> : <UserCheck size={15} />}
+                              </button>
+                            )}
                             {c.is_active && (
-                              <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => reinitialiser(c)} disabled={!c.email}
-                                      title={c.email ? "Réinitialiser l'accès (envoie un lien de nouveau mot de passe)" : "Renseignez d'abord une adresse e-mail"}
+                              <button type="button" className="adm-btn adm-btn-contour adm-btn-icone" onClick={() => reinitialiser(c)} disabled={!c.adresse_codes}
+                                      title={c.adresse_codes ? "Réinitialiser l'accès (envoie un lien de nouveau mot de passe)" : "Aucune adresse : renseignez l'e-mail du compte ou celui de son espace"}
                                       aria-label={`Réinitialiser l'accès de ${c.username}`}>
                                 <KeyRound size={15} />
                               </button>

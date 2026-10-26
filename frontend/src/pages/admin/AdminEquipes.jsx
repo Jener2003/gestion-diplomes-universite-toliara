@@ -117,12 +117,12 @@ const AdminEquipes = () => {
   return (
     <AdminLayout>
       <EnTetePage
-        titre="Adresses de notification des équipes"
-        sousTitre="Boîte partagée de chaque équipe, distincte des comptes personnels. Elle reçoit une copie des notifications adressées à toute l'équipe."
+        titre="Adresses communes des espaces"
+        sousTitre="Boîte partagée de chaque équipe. Elle reçoit les codes de connexion et d'inscription des agents de l'espace, et une copie des notifications adressées à toute l'équipe."
       />
       <Bandeau type="info">
-        Les notifications nominatives (imprimeur ou agent désigné) restent personnelles et ne sont pas copiées ici.
-        Une adresse d'équipe ne peut pas servir d'identifiant de connexion.
+        Un espace n'est ouvert à l'inscription qu'une fois son adresse configurée. Chaque agent garde son propre identifiant
+        et son mot de passe ; la case ci-dessous ne concerne que la copie des notifications, pas les codes.
       </Bandeau>
       {message && <Bandeau type={message.type} onFermer={() => setMessage(null)}>{message.texte}</Bandeau>}
       {erreur && <Bandeau type="erreur">{erreur}</Bandeau>}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Archive, Search, Eye, X, History, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable, { applyPlugin } from 'jspdf-autotable';
@@ -33,16 +33,34 @@ const Archives = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
-  const [selectedIds, setSelectedIds] = useState([]);
+  // Dossiers cochés, conservés d'une page à l'autre (id -> dossier)
+  const [selection, setSelection] = useState({});
+  const [total, setTotal] = useState(0);
+
+  // Recherche et filtre appliqués par le serveur (saisie temporisée)
+  const [recherche, setRecherche] = useState('');
+  useEffect(() => {
+    const minuterie = setTimeout(() => setRecherche(search.trim()), 300);
+    return () => clearTimeout(minuterie);
+  }, [search]);
+  const filtres = () => ({ search: recherche || undefined, statut: statusFilter || undefined });
+
+  // Nouveau filtre : retour à la première page AVANT de charger (pas de requête sur une page inexistante)
+  const cleFiltres = JSON.stringify([recherche, statusFilter]);
+  const derniereCleFiltres = React.useRef(cleFiltres);
 
   useEffect(() => {
+    if (derniereCleFiltres.current !== cleFiltres) {
+      derniereCleFiltres.current = cleFiltres;
+      if (page !== 1) { setPage(1); return undefined; }
+    }
     let active = true;
-    const refresh = (auto = false) => demandesAPI.getArchives({}, auto)
+    const refresh = (auto = false) => demandesAPI.getArchives({ ...filtres(), page, page_size: PAGE_SIZE }, auto)
       .then(({ data }) => {
         if (!active) return;
-        const rows = Array.isArray(data) ? data : data.results || [];
-        setDemandes(rows);
-        setSelected((current) => current ? rows.find((row) => row.id === current.id) || current : null);
+        setDemandes(data.results);
+        setTotal(data.count);
+        setSelected((current) => current ? data.results.find((row) => row.id === current.id) || current : null);
         setError('');
       })
       .catch(() => { if (active) setError('Impossible de charger les archives. Réessayez dans quelques instants.'); })
@@ -56,45 +74,47 @@ const Archives = () => {
       window.clearInterval(interval);
       window.removeEventListener('focus', refreshWhenVisible);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleFiltres, page]);
 
-  const filtered = useMemo(() => demandes.filter((d) => {
-    const student = d.etudiant_details || {};
-    const needle = search.trim().toLowerCase();
-    const ref = `dem-${String(d.id).padStart(3, '0')}`;
-    const refNeedle = needle.replace(/^dem-?0*/, '');
-    const matchesSearch = !needle || ref.includes(needle) || String(d.id) === refNeedle || [student.matricule, student.nom, student.prenom,
-      d.etablissement_origine, student.faculte, d.type_diplome]
-      .some((value) => String(value || '').toLowerCase().includes(needle));
-    return matchesSearch && (!statusFilter || d.statut === statusFilter);
-  }), [demandes, search, statusFilter]);
+  // Tous les dossiers correspondant aux filtres (export, « tout sélectionner »), sans historique
+  const tousLesDossiers = async () => (await demandesAPI.getArchives({ ...filtres(), sans_historique: 1 })).data;
 
-  const selectedVisible = filtered.filter((d) => selectedIds.includes(d.id));
-
-  useEffect(() => setPage(1), [search, statusFilter]);
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visible = demandes;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const selectedVisible = Object.values(selection);
+  const toutSelectionne = total > 0 && selectedVisible.length >= total;
 
   // Gestion des cases à cocher pour sélection personnalisée
-  const handleToggleSelect = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+  const handleToggleSelect = (d) => {
+    setSelection((prev) => {
+      const suivante = { ...prev };
+      if (suivante[d.id]) delete suivante[d.id]; else suivante[d.id] = d;
+      return suivante;
+    });
   };
 
-  const handleSelectAll = () => {
-    const allFilteredIds = filtered.map((d) => d.id);
-    const allSelected = allFilteredIds.length > 0 && allFilteredIds.every((id) => selectedIds.includes(id));
-    if (allSelected) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(allFilteredIds);
+  const handleSelectAll = async () => {
+    if (toutSelectionne) { setSelection({}); return; }
+    try {
+      const lignes = await tousLesDossiers();
+      setSelection(Object.fromEntries(lignes.map((d) => [d.id, d])));
+    } catch {
+      setError('Impossible de sélectionner tous les dossiers. Réessayez dans quelques instants.');
     }
   };
 
   // Export officiel en PDF avec téléchargement immédiat
-  const exportPDF = (customList = null) => {
-    const targetDemandes = customList || (selectedVisible.length > 0 ? selectedVisible : filtered);
+  const exportPDF = async (customList = null) => {
+    let targetDemandes = customList || (selectedVisible.length > 0 ? selectedVisible : null);
+    if (!targetDemandes) {
+      try {
+        targetDemandes = await tousLesDossiers();
+      } catch {
+        setError("Impossible de préparer l'export. Réessayez dans quelques instants.");
+        return;
+      }
+    }
 
     if (targetDemandes.length === 0) {
       alert("Aucun dossier archivé sélectionné à exporter.");
@@ -312,7 +332,7 @@ const Archives = () => {
           >
             <Download size={18} />
             <span>
-              Exporter en PDF {selectedVisible.length > 0 ? `(${selectedVisible.length} sélectionné${selectedVisible.length > 1 ? 's' : ''})` : `(${filtered.length})`}
+              Exporter en PDF {selectedVisible.length > 0 ? `(${selectedVisible.length} sélectionné${selectedVisible.length > 1 ? 's' : ''})` : `(${total})`}
             </span>
           </button>
         </div>
@@ -322,7 +342,7 @@ const Archives = () => {
           <div style={{ padding: '1rem 1.15rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <strong style={{ color: '#0a3641' }}>
-                {filtered.length} dossier{filtered.length === 1 ? '' : 's'} archivé{filtered.length === 1 ? '' : 's'}
+                {total} dossier{total === 1 ? '' : 's'} archivé{total === 1 ? '' : 's'}
               </strong>
               {selectedVisible.length > 0 && (
                 <span style={{ fontSize: '0.78rem', color: '#048b9a', fontWeight: 700, backgroundColor: '#ccfbf1', padding: '0.2rem 0.65rem', borderRadius: 99, border: '1px solid #99f6e4' }}>
@@ -373,9 +393,9 @@ const Archives = () => {
                   <th style={{ padding: '0.85rem 0.75rem', width: 44, textAlign: 'center' }}>
                     <input
                       type="checkbox"
-                      checked={filtered.length > 0 && filtered.every((d) => selectedIds.includes(d.id))}
+                      checked={toutSelectionne}
                       onChange={handleSelectAll}
-                      title={filtered.every((d) => selectedIds.includes(d.id)) ? "Tout désélectionner" : "Tout sélectionner"}
+                      title={toutSelectionne ? "Tout désélectionner" : "Tout sélectionner"}
                       style={{ width: 17, height: 17, cursor: 'pointer', accentColor: '#048b9a' }}
                     />
                   </th>
@@ -399,7 +419,7 @@ const Archives = () => {
                   </tr>
                 ) : (
                   visible.map((d) => {
-                    const isChecked = selectedIds.includes(d.id);
+                    const isChecked = Boolean(selection[d.id]);
                     return (
                       <tr
                         key={d.id}
@@ -413,7 +433,7 @@ const Archives = () => {
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => handleToggleSelect(d.id)}
+                            onChange={() => handleToggleSelect(d)}
                             title="Cocher pour inclure dans l'exportation PDF"
                             style={{ width: 17, height: 17, cursor: 'pointer', accentColor: '#048b9a' }}
                           />
@@ -452,10 +472,10 @@ const Archives = () => {
             </table>
           </div>
 
-          {!loading && filtered.length > PAGE_SIZE && (
+          {!loading && total > PAGE_SIZE && (
             <div style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', color: '#64748b', borderTop: '1px solid #e2e8f0' }}>
               <span style={{ fontSize: '0.82rem' }}>
-                Affichage de {Math.min(filtered.length, (page - 1) * PAGE_SIZE + 1)} à {Math.min(filtered.length, page * PAGE_SIZE)} sur {filtered.length} dossiers
+                Affichage de {Math.min(total, (page - 1) * PAGE_SIZE + 1)} à {Math.min(total, page * PAGE_SIZE)} sur {total} dossiers
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.82rem' }}>Page {page} sur {pageCount}</span>
